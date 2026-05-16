@@ -6,7 +6,7 @@
 const CACHE_NAME = 'ha9iba-v1';
 
 const PRECACHE_URLS = [
-  './ha9iba.html',
+  './index.html',
   'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
   'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
   'https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js',
@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
       return fetch(event.request).then(r => {
         if(r&&r.ok){ const c=r.clone(); caches.open(CACHE_NAME).then(ca=>ca.put(event.request,c)); } return r;
       }).catch(() => {
-        if(event.request.mode==='navigate') return caches.match('./ha9iba.html');
+        if(event.request.mode==='navigate') return caches.match('./index.html');
         return new Response('Offline',{status:503});
       });
     })

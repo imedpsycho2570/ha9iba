@@ -2,7 +2,7 @@
   "name": "حقيبة الأستاذ",
   "short_name": "حقيبة",
   "description": "حقيبة الأستاذ - تنقيط وإمتحان | AI.DZ technologie",
-  "start_url": "./ha9iba.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
   "dir": "rtl",
