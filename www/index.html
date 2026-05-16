@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-title" content="حقيبة الأستاذ">
 <link rel="manifest" href="manifest.json">
 <!-- SheetJS for Excel READING only -->
-<script src="js/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <!-- docx.js for Word generation -->
-<script src="js/docx.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <!-- FileSaver for downloading -->
-<script src="js/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <!-- JSZip for surgical XML editing (both xlsx and docx) -->
-<script src="js/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -597,10 +597,27 @@
         حفظ
       </button>
     </div>
-    <button class="btn btn-primary" style="margin-bottom:16px" onclick="im_generateWord()">
+    <button class="btn btn-primary" style="margin-bottom:8px" onclick="im_generateWord()">
       <svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       توليد الملف
     </button>
+    <!-- Download area - appears after file generation -->
+    <div id="im-download-area" style="display:none;margin-bottom:16px;width:100%">
+      <div style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:14px;padding:14px;text-align:center">
+        <div style="font-weight:700;color:#16a34a;font-size:1rem;margin-bottom:10px">✓ تم توليد الملف بنجاح</div>
+        <div id="im-filename-display" style="font-size:0.85rem;color:#6b7280;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <button id="im-share-btn" class="btn btn-success" style="flex:1;height:48px;font-size:0.95rem" onclick="im_shareFile()">
+            <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            مشاركة/حفظ
+          </button>
+          <button id="im-open-browser-btn" class="btn btn-outline" style="flex:1;height:48px;font-size:0.95rem;border-color:#2563eb;color:#2563eb" onclick="im_openInBrowser()">
+            <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            فتح في المتصفح
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1430,14 +1447,31 @@ async function im_generateWord() {
     // JSZip post-processing: add bidiVisual + tblCellMar to tables
     const zip = await JSZip.loadAsync(rawBlob);
     let xml = await zip.file('word/document.xml').async('string');
-    xml = xml.replace(/<w:tblPr>/g, '<w:tblPr><w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>');
+    // More robust regex: also match <w:tblPr with attributes>
+    xml = xml.replace(/<w:tblPr([^>]*)>/g, function(match, attrs) {
+      // Don't add bidiVisual if it already exists
+      if (attrs.includes('bidiVisual') || match.includes('bidiVisual')) return match;
+      return match + '<w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>';
+    });
+    // Also add bidiVisual to existing tblPr that don't have it (in case docx.js added its own)
+    xml = xml.replace(/<w:tblPr>((?!.*bidiVisual)[^<]*)<\/w:tblPr>/g, function(match) {
+      return match.replace('</w:tblPr>', '<w:bidiVisual/></w:tblPr>');
+    });
     await zip.file('word/document.xml', xml);
     const finalBlob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 
     const fileName = im_examType + '_' + (sub || 'امتحان') + '.docx';
-    await im_downloadBlob(finalBlob, fileName);
+    
+    // Store blob for later share/download
+    im_lastGeneratedBlob = finalBlob;
+    im_lastFileName = fileName;
+    im_lastDataUrl = await im_blobToDataUrl(finalBlob);
+    
     hideLoading();
-    showToast('تم توليد الملف بنجاح ✓');
+    
+    // Show the download area with share buttons
+    document.getElementById('im-download-area').style.display = 'block';
+    document.getElementById('im-filename-display').textContent = fileName;
 
   } catch (e) {
     hideLoading();
@@ -1446,7 +1480,137 @@ async function im_generateWord() {
   }
 }
 
-// ---- Convert blob to base64 ----
+// ---- File Storage for Share/Download ----
+let im_lastGeneratedBlob = null;
+let im_lastFileName = '';
+let im_lastDataUrl = '';
+
+// ---- Convert blob to data URL ----
+function im_blobToDataUrl(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ---- Share/Save button handler ----
+async function im_shareFile() {
+  if (!im_lastGeneratedBlob) { showToast('لم يتم توليد ملف بعد', '#dc2626'); return; }
+  
+  const blob = im_lastGeneratedBlob;
+  const fileName = im_lastFileName;
+  
+  // Method 1: Capacitor native plugins (APK/WebView)
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    try {
+      // Try to get plugins - they're auto-registered by Capacitor bridge
+      const plugins = window.Capacitor.Plugins || {};
+      let FS = plugins.Filesystem;
+      let SH = plugins.Share;
+      
+      // If not auto-registered, try manual registration
+      if (!FS && window.Capacitor.registerPlugin) {
+        try { FS = window.Capacitor.registerPlugin('Filesystem'); } catch(e) {}
+      }
+      if (!SH && window.Capacitor.registerPlugin) {
+        try { SH = window.Capacitor.registerPlugin('Share'); } catch(e) {}
+      }
+      
+      if (FS && SH) {
+        const base64Data = await im_blobToDataUrl(blob);
+        const pureBase64 = base64Data.split(',')[1] || base64Data;
+        
+        // Write to cache (no permissions needed)
+        const writeResult = await FS.writeFile({
+          path: fileName,
+          data: pureBase64,
+          directory: 'CACHE',
+          recursive: true,
+        });
+        
+        // Share via Android share sheet
+        try {
+          await SH.share({
+            title: fileName,
+            url: writeResult.uri,
+            dialogTitle: 'حفظ أو مشاركة الملف',
+          });
+        } catch(shareErr) {
+          showToast('تم حفظ الملف ✓');
+        }
+        return;
+      }
+    } catch(e) {
+      console.warn('Capacitor plugins failed:', e);
+    }
+  }
+  
+  // Method 2: Web Share API with files (Android browser)
+  if (navigator.share) {
+    try {
+      const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const shareData = { files: [file], title: fileName };
+      if (!navigator.canShare || navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  
+  // Method 3: FileSaver.js (desktop browser)
+  try {
+    if (typeof saveAs === 'function') {
+      saveAs(blob, fileName);
+      showToast('جاري التحميل...');
+      return;
+    }
+  } catch(e) {}
+  
+  // Method 4: Blob URL download
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 5000);
+    showToast('جاري التحميل...');
+    return;
+  } catch(e) {}
+  
+  showToast('اضغط "فتح في المتصفح" لحفظ الملف', '#dc2626');
+}
+
+// ---- Open in external browser for download ----
+function im_openInBrowser() {
+  if (!im_lastDataUrl) { showToast('لم يتم توليد ملف بعد', '#dc2626'); return; }
+  
+  // Try opening in external browser where download works
+  const url = im_lastDataUrl;
+  
+  // In Capacitor, window.open opens in the system browser
+  const newWin = window.open(url, '_blank');
+  
+  if (!newWin) {
+    // Fallback: create a visible link
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = im_lastFileName;
+    a.textContent = 'اضغط هنا لتحميل: ' + im_lastFileName;
+    a.style.cssText = 'display:block;padding:12px;margin:8px 0;background:#dbeafe;color:#2563eb;border-radius:10px;text-align:center;font-weight:600;text-decoration:none;';
+    
+    const downloadArea = document.getElementById('im-download-area');
+    // Remove old links
+    const oldLinks = downloadArea.querySelectorAll('.download-link');
+    oldLinks.forEach(l => l.remove());
+    a.classList.add('download-link');
+    downloadArea.appendChild(a);
+  }
+}
+
+// ---- Old blob-to-base64 (kept for compatibility) ----
 function im_blobToBase64(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -1455,107 +1619,47 @@ function im_blobToBase64(blob) {
   });
 }
 
-// ---- Universal download function (works in WebView / APK / Browser) ----
+// ---- Universal download function (for Excel / Tankit section) ----
 async function im_downloadBlob(blob, fileName) {
-  // ---- Register Capacitor plugins if in APK/WebView ----
-  let CapFS = null, CapShare = null;
-  if (window.Capacitor) {
+  // Method 1: Capacitor native plugins (APK/WebView)
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
     try {
-      // Ensure plugins are registered (needed for plain HTML without bundler)
-      if (!window.Capacitor.Plugins) window.Capacitor.Plugins = {};
-      CapFS = window.Capacitor.Plugins.Filesystem || window.Capacitor.registerPlugin('Filesystem');
-      CapShare = window.Capacitor.Plugins.Share || window.Capacitor.registerPlugin('Share');
-      if (CapFS) window.Capacitor.Plugins.Filesystem = CapFS;
-      if (CapShare) window.Capacitor.Plugins.Share = CapShare;
-    } catch(e) {
-      console.warn('Capacitor plugin registration failed:', e);
-    }
-  }
-
-  // Method 1: Capacitor Filesystem + Share (best for APK/WebView)
-  if (CapFS && CapShare) {
-    try {
-      const base64Data = await im_blobToBase64(blob);
-      const pureBase64 = base64Data.split(',')[1] || base64Data;
-
-      // Write file to app's cache (accessible for sharing)
-      const writeResult = await CapFS.writeFile({
-        path: fileName,
-        data: pureBase64,
-        directory: 'CACHE',
-        recursive: true,
-      });
-
-      // Share via Android share sheet so user can save/open the file
-      try {
-        await CapShare.share({
-          title: fileName,
-          url: writeResult.uri,
-          dialogTitle: 'حفظ أو مشاركة الملف',
-        });
-      } catch(shareErr) {
-        // User cancelled share - that's OK, file still exists
-        showToast('تم حفظ الملف ✓');
-      }
-      return;
-    } catch(e) {
-      console.warn('Capacitor FS+Share failed, trying Documents fallback:', e);
-      // Fallback: try writing to Documents directory
-      try {
+      const plugins = window.Capacitor.Plugins || {};
+      let FS = plugins.Filesystem;
+      let SH = plugins.Share;
+      if (!FS && window.Capacitor.registerPlugin) { try { FS = window.Capacitor.registerPlugin('Filesystem'); } catch(e) {} }
+      if (!SH && window.Capacitor.registerPlugin) { try { SH = window.Capacitor.registerPlugin('Share'); } catch(e) {} }
+      
+      if (FS && SH) {
         const base64Data = await im_blobToBase64(blob);
         const pureBase64 = base64Data.split(',')[1] || base64Data;
-        const writeResult = await CapFS.writeFile({
-          path: fileName,
-          data: pureBase64,
-          directory: 'EXTERNAL_STORAGE',
-          recursive: true,
-        });
-        showToast('تم حفظ الملف في التخزين ✓');
+        const writeResult = await FS.writeFile({ path: fileName, data: pureBase64, directory: 'CACHE', recursive: true });
+        try { await SH.share({ title: fileName, url: writeResult.uri, dialogTitle: 'حفظ أو مشاركة الملف' }); } catch(shareErr) { showToast('تم حفظ الملف ✓'); }
         return;
-      } catch(e2) {
-        console.warn('External storage also failed:', e2);
       }
-    }
+    } catch(e) { console.warn('Capacitor plugins failed:', e); }
   }
-
-  // Method 2: Web Share API with files (Android browser)
+  
+  // Method 2: Web Share API
   if (navigator.share) {
     try {
-      const mimeType = blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      const file = new File([blob], fileName, { type: mimeType });
-      const shareData = { files: [file], title: fileName };
-      if (navigator.canShare && navigator.canShare(shareData)) {
-        await navigator.share(shareData);
-        return;
-      } else {
-        // Try sharing without files (URL/text only)
-        await navigator.share({ title: fileName, text: 'ملف ' + fileName });
-        return;
-      }
-    } catch(e) {
-      if (e.name === 'AbortError') return;
-      console.warn('Web Share failed, trying fallback:', e);
-    }
+      const file = new File([blob], fileName, { type: blob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      if (!navigator.canShare || navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: fileName }); return; }
+    } catch(e) { if (e.name === 'AbortError') return; }
   }
-
-  // Method 3: FileSaver.js (desktop browser)
-  try {
-    if (typeof saveAs === 'function') {
-      saveAs(blob, fileName);
-      return;
-    }
-  } catch(e) {}
-
-  // Method 4: Anchor download with blob URL
+  
+  // Method 3: FileSaver.js
+  try { if (typeof saveAs === 'function') { saveAs(blob, fileName); return; } } catch(e) {}
+  
+  // Method 4: Blob URL
   try {
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = fileName; a.style.display = 'none';
+    const a = document.createElement('a'); a.href = url; a.download = fileName; a.style.display = 'none';
     document.body.appendChild(a); a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 5000);
     return;
   } catch(e) {}
-
+  
   showToast('لم يتمكن من تحميل الملف', '#dc2626');
 }
 
