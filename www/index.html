@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>حقيبة الأستاذ - AI.DZ technologie</title>
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="حقيبة الأستاذ">
+<link rel="manifest" href="manifest.json">
+<!-- SheetJS for Excel READING only -->
+<script src="js/xlsx.full.min.js"></script>
+<!-- docx.js for Word generation -->
+<script src="js/docx.umd.js"></script>
+<!-- FileSaver for downloading -->
+<script src="js/FileSaver.min.js"></script>
+<!-- JSZip for surgical XML editing (both xlsx and docx) -->
+<script src="js/jszip.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: #ffffff;
+    color: #1f2937;
+    min-height: 100vh;
+    overflow-x: hidden;
+    direction: rtl;
+  }
+
+  .screen {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: fadeIn 0.4s ease;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2.5px solid #fff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .spinner-blue {
+    border-color: #2563eb;
+    border-top-color: transparent;
+    width: 24px; height: 24px;
+  }
+  .spinner-large {
+    width: 32px; height: 32px;
+    border-width: 3px;
+  }
+
+  .logo-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #2563eb;
+    letter-spacing: 2px;
+  }
+  .logo-subtitle {
+    font-size: 1.1rem;
+    color: #9ca3af;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .icon-circle {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: #dbeafe;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .icon-circle svg { width: 40px; height: 40px; color: #2563eb; }
+  .icon-circle-sm { width: 64px; height: 64px; }
+  .icon-circle-sm svg { width: 32px; height: 32px; }
+
+  .card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .card-desc {
+    font-size: 0.9rem;
+    color: #6b7280;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .input-field {
+    width: 100%;
+    height: 56px;
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0 20px;
+    font-size: 1.1rem;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+    color: #1f2937;
+  }
+  .input-field:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+  .input-field::placeholder { color: #9ca3af; }
+
+  .input-col {
+    width: 100%;
+    height: 48px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0 12px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+  }
+  .input-col:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  .btn {
+    width: 100%;
+    height: 56px;
+    border: none;
+    border-radius: 14px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .btn-primary {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+  }
+  .btn-primary:hover { background: #1d4ed8; }
+
+  .btn-success {
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+  }
+
+  .btn-danger {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .btn-outline {
+    background: #fff;
+    color: #6b7280;
+    border: 2px solid #e5e7eb;
+  }
+  .btn-outline:hover { background: #f9fafb; }
+
+  .menu-btn {
+    width: 280px;
+    height: 80px;
+    font-size: 1.6rem;
+    font-weight: 700;
+    border-radius: 20px;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  }
+  .menu-btn:hover { transform: scale(1.04); }
+
+  .msg {
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 12px;
+    border-radius: 10px;
+    animation: slideUp 0.3s ease;
+  }
+  .msg-error { background: #fef2f2; color: #dc2626; }
+  .msg-success { background: #f0fdf4; color: #16a34a; }
+
+  .upload-area {
+    border: 2.5px dashed #bfdbfe;
+    border-radius: 18px;
+    padding: 48px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-bottom: 16px;
+  }
+  .upload-area:hover { border-color: #2563eb; background: rgba(37,99,235,0.03); }
+  .upload-area svg { width: 56px; height: 56px; color: #93c5fd; margin-bottom: 12px; }
+  .upload-area:hover svg { color: #2563eb; }
+  .upload-area p { color: #4b5563; font-size: 1.05rem; font-weight: 500; }
+  .upload-area .sub { color: #9ca3af; font-size: 0.85rem; margin-top: 8px; }
+
+  .file-success {
+    display: flex; align-items: center; gap: 8px;
+    background: #f0fdf4; padding: 12px; border-radius: 10px;
+    color: #16a34a; font-size: 0.875rem;
+  }
+
+  .col-row { display: flex; gap: 16px; align-items: center; }
+  .col-item { flex: 1; text-align: center; }
+  .col-item label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+
+  .sheet-btn {
+    width: 100%; padding: 16px; border-radius: 14px;
+    background: #fff; border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    font-size: 1.1rem; font-weight: 500; color: #374151;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: space-between;
+    text-align: right; animation: slideUp 0.3s ease;
+  }
+  .sheet-btn:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #bfdbfe; color: #2563eb; }
+
+  .student-btn {
+    width: 100%; padding: 14px 16px; border-radius: 14px;
+    border: none; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: space-between;
+    text-align: right; animation: slideUp 0.3s ease; background: #fff;
+  }
+  .student-btn:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .student-btn.complete { border-left: 4px solid #22c55e; background: #f0fdf4; }
+  .student-btn.partial { border-left: 4px solid #ef4444; background: #fef2f2; }
+  .student-btn.empty { border-left: 4px solid #9ca3af; background: #f9fafb; }
+
+  .student-info { display: flex; align-items: center; gap: 12px; }
+  .student-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 0.75rem; font-weight: 700;
+  }
+  .complete .student-num { background: #22c55e; }
+  .partial .student-num { background: #ef4444; }
+  .empty .student-num { background: #9ca3af; }
+  .student-name { font-weight: 500; font-size: 1rem; color: #1f2937; }
+
+  .grade-group { margin-bottom: 16px; }
+  .grade-group label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+  .grade-input-wrap { position: relative; }
+  .grade-input-wrap .suffix {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: #9ca3af; font-size: 0.875rem; pointer-events: none;
+  }
+
+  .legend { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #6b7280; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  .scroll-area {
+    flex: 1; overflow-y: auto; max-height: 55vh; padding-left: 4px;
+    width: 100%; max-width: 420px;
+  }
+  .scroll-area::-webkit-scrollbar { width: 4px; }
+  .scroll-area::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #16a34a; color: #fff; padding: 12px 24px; border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    display: flex; align-items: center; gap: 8px; font-weight: 500;
+    z-index: 100; animation: slideUp 0.3s ease;
+  }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 90; gap: 12px; color: #2563eb; font-size: 1.1rem; font-weight: 500;
+  }
+
+  .grade-error {
+    display: flex; align-items: center; gap: 8px; padding: 12px;
+    background: #fef2f2; border-radius: 10px; color: #dc2626;
+    font-size: 0.875rem; font-weight: 500; animation: slideUp 0.3s ease;
+  }
+
+  .info-btn {
+    background: none; border: none; padding: 8px; border-radius: 50%;
+    cursor: pointer; color: #2563eb; transition: background 0.2s;
+  }
+  .info-btn:hover { background: #eff6ff; }
+
+  .link { color: #2563eb; font-size: 0.875rem; font-weight: 500; text-decoration: underline; text-underline-offset: 4px; }
+  .link:hover { color: #1d4ed8; }
+
+  .screen-header { width: 100%; max-width: 420px; margin-bottom: 20px; }
+
+  .btn-row { display: flex; gap: 12px; width: 100%; max-width: 420px; margin-top: 16px; }
+  .btn-row .btn { flex: 1; }
+
+  .toggle-group { display:flex;gap:6px;width:100%;margin-bottom:12px; }
+  .toggle-btn { flex:1;height:40px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;color:#6b7280;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;text-align:center; }
+  .toggle-btn.active { background:#2563eb;color:#fff;border-color:#2563eb; }
+
+  .form-row { margin-bottom:10px;width:100%; }
+  .form-row label { display:block;font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px; }
+  .form-row input { width:100%;height:44px;border:2px solid #e5e7eb;border-radius:10px;padding:0 12px;font-size:0.95rem;text-align:right;outline:none;transition:border-color 0.2s;direction:rtl; }
+  .form-row input:focus { border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+
+  .exercise-textarea { width:100%;height:70vh;border:2px solid #e5e7eb;border-radius:12px;padding:14px;font-size:1.05rem;text-align:right;direction:rtl;outline:none;resize:none;line-height:1.8;font-family:'Segoe UI',Tahoma,Arial,sans-serif;transition:border-color 0.2s; }
+  .exercise-textarea:focus { border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+
+  .symbols-toggle { width:100%;height:44px;border:2px solid #bfdbfe;border-radius:10px;background:#eff6ff;color:#2563eb;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px; }
+  .symbols-toggle:hover { background:#dbeafe; }
+  .symbols-panel { display:none;width:100%;padding:10px;background:#f9fafb;border:2px solid #e5e7eb;border-radius:10px;animation:slideUp 0.25s ease; }
+  .symbols-panel.open { display:block; }
+  .sym-btn { display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:1.15rem;cursor:pointer;transition:all 0.15s;margin:2px; }
+  .sym-btn:hover { background:#dbeafe;border-color:#2563eb; }
+  .sym-btn:active { transform:scale(0.92); }
+
+  .exercise-chip { display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 16px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:6px;cursor:pointer;transition:all 0.2s; }
+  .exercise-chip:hover { box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+  .exercise-chip .name { font-weight:600;color:#16a34a;font-size:0.95rem; }
+  .exercise-chip .actions { display:flex;gap:6px; }
+  .chip-btn { width:32px;height:32px;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.85rem;transition:all 0.15s; }
+  .chip-edit { background:#dbeafe;color:#2563eb; }
+  .chip-del { background:#fef2f2;color:#dc2626; }
+
+  .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:50;align-items:center;justify-content:center;padding:12px; }
+  .modal-overlay.open { display:flex; }
+  .modal-content { background:#fff;border-radius:18px;width:100%;max-width:460px;max-height:95vh;overflow-y:auto;padding:20px;animation:slideUp 0.3s ease; }
+  .modal-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:14px; }
+  .modal-header h3 { font-size:1.2rem;font-weight:700;color:#1f2937; }
+  .modal-close { width:36px;height:36px;border:none;border-radius:50%;background:#f3f4f6;color:#6b7280;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center; }
+  .modal-close:hover { background:#e5e7eb; }
+
+  svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+
+<!-- ===== SPLASH SCREEN ===== -->
+<div id="screen-splash" class="screen active">
+  <div style="text-align:center; animation: scaleIn 1.2s ease">
+    <div class="logo-title" style="font-size:2.8rem">حقيبة الأستاذ</div>
+    <div class="logo-subtitle">AI.DZ technologie</div>
+  </div>
+</div>
+
+<!-- ===== ACTIVATION SCREEN ===== -->
+<div id="screen-activation" class="screen">
+  <div class="card">
+    <div class="icon-circle">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <div class="card-title">تفعيل التطبيق</div>
+    <div class="card-desc">مرحبا بك في حقيبة الأستاذ من AI.DZ technologie</div>
+    <input id="code-input" class="input-field" type="text" placeholder="أدخل الكود هنا"
+           onkeydown="if(event.key==='Enter') handleActivate()">
+    <div id="activation-msg" style="margin-top:12px; display:none"></div>
+    <button id="activate-btn" class="btn btn-primary" style="margin-top:16px" onclick="handleActivate()">تفعيل</button>
+    <div style="text-align:center; margin-top:16px">
+      <a href="https://www.facebook.com/share/1NZ12yRpTw/" target="_blank" class="link">الحصول على كود التفعيل</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MENU SCREEN ===== -->
+<div id="screen-menu" class="screen">
+  <div style="text-align:center">
+    <div class="icon-circle" style="width:100px;height:100px;margin-bottom:20px">
+      <svg viewBox="0 0 24 24" style="width:50px;height:50px"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+    </div>
+    <div class="logo-title" style="font-size:2.2rem">حقيبة الأستاذ</div>
+    <div class="logo-subtitle" style="margin-bottom:36px">AI.DZ technologie</div>
+    <div style="display:flex;flex-direction:column;gap:20px;align-items:center">
+      <button class="menu-btn" onclick="goToScreen('tk-main')" style="background:#2563eb">
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        تنقيط
+      </button>
+      <button class="menu-btn" onclick="goToScreen('im-main')" style="background:#7c3aed">
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        إمتحان
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TK: MAIN / UPLOAD SCREEN ===== -->
+<div id="screen-tk-main" class="screen">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="info-btn" onclick="goToScreen('menu')" title="رجوع" style="color:#6b7280">
+          <svg viewBox="0 0 24 24" style="width:24px;height:24px"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h2 style="font-size:1.5rem;font-weight:700;color:#1f2937">رفع ملف Excel</h2>
+      </div>
+      <button class="info-btn" onclick="showExpiryInfo()" title="معلومات الصلاحية">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+    </div>
+    <div class="upload-area" id="tk-upload-area" onclick="tk_pickFile()">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>اضغط لاختيار ملف Excel</p>
+      <p class="sub">ملفات .xlsx فقط</p>
+    </div>
+    <input type="file" id="tk-file-input" accept=".xlsx" style="display:none" onchange="tk_handleFileSelected(this)">
+    <div id="tk-upload-loading" style="display:none;text-align:center;color:#2563eb;padding:8px">
+      <span class="spinner spinner-blue"></span>
+      <span style="margin-right:8px">جاري الرفع...</span>
+    </div>
+    <div id="tk-file-success" style="display:none" class="file-success">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;color:#16a34a"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span id="tk-file-name-display"></span>
+    </div>
+    <div id="tk-main-msg" style="display:none;margin-top:8px"></div>
+    <div id="tk-continue-section" style="display:none;margin-top:12px">
+      <button class="btn btn-primary" onclick="goToScreen('tk-col_check')">
+        متابعة
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TK: COLUMN CHECK SCREEN ===== -->
+<div id="screen-tk-col_check" class="screen">
+  <div class="card">
+    <div class="icon-circle icon-circle-sm">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    </div>
+    <div class="card-title">تأكيد أعمدة النقاط</div>
+    <div class="card-desc">تحقق من أعمدة الدرجات في ملف Excel</div>
+    <div class="col-row" style="margin-bottom:24px">
+      <div class="col-item"><label>التقويم</label><input id="tk-col-taqwim" class="input-col" value="E" maxlength="2"></div>
+      <div class="col-item"><label>الفرض</label><input id="tk-col-fard" class="input-col" value="F" maxlength="2"></div>
+      <div class="col-item"><label>الاختبار</label><input id="tk-col-ikhtibar" class="input-col" value="G" maxlength="2"></div>
+    </div>
+    <button class="btn btn-primary" onclick="tk_confirmColumns()">تأكيد ومتابعة</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="goToScreen('tk-main')">رجوع</button>
+  </div>
+</div>
+
+<!-- ===== TK: SHEETS SELECTION SCREEN ===== -->
+<div id="screen-tk-sheets" class="screen" style="justify-content:flex-start;padding-top:32px">
+  <div class="screen-header">
+    <h2 style="font-size:1.5rem;font-weight:700;color:#1f2937;margin-bottom:4px">اختيار الورقة</h2>
+    <p style="color:#6b7280;font-size:0.9rem">اختر ورقة من ملف Excel للمتابعة</p>
+  </div>
+  <div class="scroll-area" id="tk-sheets-list"></div>
+  <button class="btn btn-outline" style="margin-top:16px;max-width:420px" onclick="goToScreen('tk-col_check')">رجوع</button>
+</div>
+
+<!-- ===== TK: STUDENT LIST SCREEN ===== -->
+<div id="screen-tk-list" class="screen" style="justify-content:flex-start;padding-top:32px">
+  <div class="screen-header">
+    <h2 id="tk-list-title" style="font-size:1.25rem;font-weight:700;color:#1f2937;margin-bottom:4px"></h2>
+    <p id="tk-list-subtitle" style="color:#6b7280;font-size:0.85rem"></p>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> مكتمل</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> ناقص</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span> فارغ</div>
+  </div>
+  <div class="scroll-area" id="tk-students-list"></div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="goToScreen('tk-sheets')">رجوع</button>
+    <button class="btn btn-success" style="font-size:1.05rem" onclick="tk_saveAndDownload()">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      حفظ
+    </button>
+  </div>
+</div>
+
+<!-- ===== TK: GRADE ENTRY SCREEN ===== -->
+<div id="screen-tk-grade" class="screen">
+  <div class="card">
+    <div class="icon-circle icon-circle-sm">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    </div>
+    <div class="card-title" id="tk-grade-student-name"></div>
+    <div class="card-desc">إدخال الدرجات</div>
+    <div id="tk-grade-fields">
+      <div class="grade-group"><label>تقويم النشاطات</label><div class="grade-input-wrap"><input id="tk-grade-taqwim" class="input-field" type="text" inputmode="decimal" placeholder="0 - 20" oninput="tk_handleGradeInput(this, 'taqwim')"><span class="suffix">/ 20</span></div></div>
+      <div class="grade-group"><label>الفرض</label><div class="grade-input-wrap"><input id="tk-grade-fard" class="input-field" type="text" inputmode="decimal" placeholder="0 - 20" oninput="tk_handleGradeInput(this, 'fard')"><span class="suffix">/ 20</span></div></div>
+      <div class="grade-group"><label>الاختبار</label><div class="grade-input-wrap"><input id="tk-grade-ikhtibar" class="input-field" type="text" inputmode="decimal" placeholder="0 - 20" oninput="tk_handleGradeInput(this, 'ikhtibar')"><span class="suffix">/ 20</span></div></div>
+    </div>
+    <div id="tk-grade-error" style="display:none" class="grade-error"></div>
+    <button class="btn btn-primary" style="margin-top:16px" onclick="tk_saveGrades()">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      حفظ ورجوع
+    </button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="goToScreen('tk-list')">رجوع بدون حفظ</button>
+  </div>
+</div>
+
+<!-- ===== IM: MAIN APP SCREEN ===== -->
+<div id="screen-im-main" class="screen" style="justify-content:flex-start;padding-top:16px">
+  <div class="screen-header">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="modal-close" onclick="goToScreen('menu')" title="رجوع" style="background:#f3f4f6;color:#6b7280">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h2 style="font-size:1.3rem;font-weight:700;color:#1f2937">إنشاء امتحان</h2>
+      </div>
+      <button class="modal-close" onclick="showExpiryInfo()" title="الصلاحية" style="background:#eff6ff;color:#2563eb">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="scroll-area" id="im-main-scroll">
+    <label style="font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">نوع المدرسة</label>
+    <div class="toggle-group">
+      <button class="toggle-btn" onclick="im_setSchoolType(this,'ابتدائية')">ابتدائية</button>
+      <button class="toggle-btn active" onclick="im_setSchoolType(this,'متوسطة')">متوسطة</button>
+      <button class="toggle-btn" onclick="im_setSchoolType(this,'ثانوية')">ثانوية</button>
+    </div>
+    <label style="font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">نوع الامتحان</label>
+    <div class="toggle-group">
+      <button class="toggle-btn" onclick="im_setExamType(this,'فرض')">فرض</button>
+      <button class="toggle-btn active" onclick="im_setExamType(this,'اختبار')">اختبار</button>
+      <button class="toggle-btn" onclick="im_setExamType(this,'تقييم مكتسبات')">تقييم مكتسبات</button>
+    </div>
+    <div class="form-row"><label>الولاية</label><input id="im-f-dir" placeholder="أدخل الولاية"></div>
+    <div class="form-row"><label>المؤسسة</label><input id="im-f-sch" placeholder="أدخل اسم المؤسسة"></div>
+    <div class="form-row"><label>المستوى</label><input id="im-f-lvl" placeholder="أدخل المستوى"></div>
+    <div class="form-row"><label>المادة</label><input id="im-f-sub" placeholder="أدخل المادة"></div>
+    <div class="form-row"><label>التاريخ</label><input id="im-f-date" type="date"></div>
+    <div class="form-row"><label>المدة</label><input id="im-f-dur" placeholder="مثال: ساعة واحدة"></div>
+    <div class="form-row"><label>رقم الثلاثي</label><input id="im-f-trm" placeholder="مثال: 01"></div>
+    <div style="margin-top:14px"></div>
+    <div id="im-exercise-list"></div>
+    <button class="btn btn-success" style="margin-bottom:10px" onclick="im_openExerciseModal(-1)">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      إضافة تمرين
+    </button>
+    <button class="btn btn-primary" style="margin-bottom:20px" onclick="im_generateWord()">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      توليد الملف
+    </button>
+  </div>
+</div>
+
+<!-- ===== IM: EXERCISE MODAL ===== -->
+<div id="screen-im-exercise-modal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="im-exercise-modal-title">إضافة تمرين</h3>
+      <button class="modal-close" onclick="im_closeExerciseModal()">&#10005;</button>
+    </div>
+    <textarea id="im-exercise-input" class="exercise-textarea" placeholder="اكتب التمرين هنا..."></textarea>
+    <button class="symbols-toggle" style="margin-top:10px" onclick="im_toggleSymbols()">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+      رموز رياضية
+    </button>
+    <div id="im-symbols-panel" class="symbols-panel"><div id="im-symbols-grid"></div></div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-danger" style="flex:1" onclick="im_clearExercise()">محو الكل</button>
+      <button class="btn btn-success" style="flex:1" onclick="im_saveExercise()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" style="display:none"></div>
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loading-overlay" class="loading-overlay" style="display:none">
+  <span class="spinner spinner-blue spinner-large"></span>
+  <span id="loading-text">جاري التحميل...</span>
+</div>
+
+<script>
+// ============================================
+// حقيبة الأستاذ - AI.DZ technologie
+// Merged App: TANKIT (تنقيط) + IMTIHAN (إمتحان)
+// Excel: JSZip surgical XML editing (preserves formatting!)
+// Word: docx.js + JSZip post-processing
+// ============================================
+
+const FIREBASE_URL = "https://activation-tankit-default-rtdb.europe-west1.firebasedatabase.app";
+
+let activated = false;
+let expiryDate = '';
+let deviceCode = '';
+
+// ============================================
+// SHARED HELPERS
+// ============================================
+
+function getDeviceId() {
+  let id = localStorage.getItem('ha9iba_device_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('ha9iba_device_id', id); }
+  return id;
+}
+
+function goToScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+  if (name === 'tk-main' && tk_workbookData) {
+    document.getElementById('tk-upload-area').style.display = 'block';
+    document.getElementById('tk-file-success').style.display = 'flex';
+    document.getElementById('tk-continue-section').style.display = 'block';
+  }
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text || 'جاري التحميل...';
+  document.getElementById('loading-overlay').style.display = 'flex';
+}
+function hideLoading() { document.getElementById('loading-overlay').style.display = 'none'; }
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.className = 'toast'; t.style.background = color || '#16a34a';
+  t.innerHTML = '<span>' + msg + '</span>'; t.style.display = 'flex';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function showMsg(containerId, text, type) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.className = 'msg ' + (type === 'success' ? 'msg-success' : 'msg-error');
+  el.textContent = text; el.style.display = 'block';
+}
+function hideMsg(containerId) { const el = document.getElementById(containerId); if (el) el.style.display = 'none'; }
+
+function showExpiryInfo() {
+  if (!expiryDate) { alert('لم يتم التفعيل بعد'); return; }
+  const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000);
+  alert(days > 0 ? 'متبقي ' + days + ' يوم على انتهاء الصلاحية' : 'انتهت صلاحية التفعيل');
+}
+
+// ============================================
+// SHARED ACTIVATION
+// ============================================
+
+async function handleActivate() {
+  const code = document.getElementById('code-input').value.trim();
+  if (!code) { showMsg('activation-msg', 'يرجى إدخال الكود', 'error'); return; }
+  const btn = document.getElementById('activate-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري التحقق...';
+  hideMsg('activation-msg');
+  try {
+    const deviceId = getDeviceId();
+    const response = await fetch(FIREBASE_URL + '/codes/' + code + '.json');
+    const codeData = await response.json();
+    if (!codeData) { showMsg('activation-msg', 'الكود غير صحيح', 'error'); btn.disabled = false; btn.textContent = 'تفعيل'; return; }
+    const isUsed = String(codeData.is_used || 'false').toLowerCase() === 'true';
+    if (!isUsed) {
+      const now = new Date(); const expiry = new Date(now.getTime() + 730*24*60*60*1000);
+      const expiryStr = expiry.toISOString().split('T')[0];
+      await fetch(FIREBASE_URL + '/codes/' + code + '.json', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ is_used: true, device_id: deviceId, expiry_date: expiryStr }) });
+      activated = true; expiryDate = expiryStr; deviceCode = code;
+      localStorage.setItem('ha9iba_code', code); localStorage.setItem('ha9iba_expiry', expiryStr);
+      showMsg('activation-msg', 'تم التفعيل لغاية ' + expiryStr, 'success');
+      setTimeout(() => goToScreen('menu'), 1500);
+    } else {
+      if (codeData.device_id === deviceId) {
+        const expiryStr = codeData.expiry_date; const now = new Date(); const expiryDt = new Date(expiryStr);
+        if (now < expiryDt) {
+          activated = true; expiryDate = expiryStr; deviceCode = code;
+          localStorage.setItem('ha9iba_code', code); localStorage.setItem('ha9iba_expiry', expiryStr);
+          showMsg('activation-msg', 'دخول ناجح', 'success'); setTimeout(() => goToScreen('menu'), 1000);
+        } else { showMsg('activation-msg', 'انتهت صلاحية السنتين', 'error'); }
+      } else { showMsg('activation-msg', 'الكود مستخدم على جهاز آخر', 'error'); }
+    }
+  } catch (e) { showMsg('activation-msg', 'خطأ في الاتصال بالإنترنت', 'error'); }
+  btn.disabled = false; btn.textContent = 'تفعيل';
+}
+
+async function verifySavedCode(savedCode) {
+  try {
+    const deviceId = getDeviceId();
+    const response = await fetch(FIREBASE_URL + '/codes/' + savedCode + '.json');
+    const codeData = await response.json();
+    if (codeData && codeData.device_id === deviceId) {
+      const now = new Date(); const expiryDt = new Date(codeData.expiry_date);
+      if (now < expiryDt) { activated = true; expiryDate = codeData.expiry_date; deviceCode = savedCode; goToScreen('menu'); return; }
+    }
+    localStorage.removeItem('ha9iba_code'); localStorage.removeItem('ha9iba_expiry');
+    goToScreen('activation');
+  } catch (e) {
+    // Offline: check localStorage
+    const savedExpiry = localStorage.getItem('ha9iba_expiry');
+    if (savedExpiry && new Date() < new Date(savedExpiry)) {
+      activated = true; expiryDate = savedExpiry; deviceCode = savedCode; goToScreen('menu'); return;
+    }
+    goToScreen('activation');
+  }
+}
+
+// ============================================
+// TANKIT (تنقيط) - Excel Grading App
+// ★★★ JSZip SURGICAL XML EDITING ★★★
+// ============================================
+
+let tk_fileHandle = null;
+let tk_workbookData = null;       // SheetJS workbook (for reading only)
+let tk_originalArrayBuffer = null; // Original .xlsx bytes (preserved for JSZip editing)
+let tk_fileName = '';
+let tk_sheets = [];
+let tk_selectedSheet = '';
+let tk_selectedSheetIndex = 0;    // Index of the sheet in workbook
+let tk_students = [];
+let tk_currentStudent = null;
+let tk_colMap = { taqwim: 'E', fard: 'F', ikhtibar: 'G' };
+let tk_gradeInputs = { taqwim: '', fard: '', ikhtibar: '' };
+
+function tk_columnLetterToIndex(letter) {
+  let index = 0;
+  for (let i = 0; i < letter.length; i++) { index = index * 26 + (letter.toUpperCase().charCodeAt(i) - 64); }
+  return index - 1;
+}
+
+// ---- File System Access API ----
+function tk_canUseFileSystemAPI() { return 'showOpenFilePicker' in window; }
+
+async function tk_pickFile() {
+  hideMsg('tk-main-msg');
+  if (tk_canUseFileSystemAPI()) {
+    try {
+      const handles = await window.showOpenFilePicker({ types: [{ description: 'Excel Files', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']} }], multiple: false });
+      tk_fileHandle = handles[0]; tk_fileName = tk_fileHandle.name;
+      showLoading('جاري قراءة الملف...');
+      const file = await tk_fileHandle.getFile();
+      tk_originalArrayBuffer = await file.arrayBuffer();
+      tk_workbookData = XLSX.read(tk_originalArrayBuffer, { type: 'array' });
+      hideLoading(); tk_showFileSuccess(); return;
+    } catch (e) { if (e.name === 'AbortError') return; console.warn('FSA API failed:', e); }
+  }
+  document.getElementById('tk-file-input').click();
+}
+
+async function tk_handleFileSelected(input) {
+  const file = input.files?.[0]; if (!file) return;
+  if (!file.name.endsWith('.xlsx')) { showMsg('tk-main-msg', 'يجب اختيار ملف Excel (.xlsx)', 'error'); return; }
+  tk_fileName = file.name; tk_fileHandle = null;
+  showLoading('جاري قراءة الملف...');
+  try {
+    tk_originalArrayBuffer = await file.arrayBuffer();
+    tk_workbookData = XLSX.read(tk_originalArrayBuffer, { type: 'array' });
+    hideLoading(); tk_showFileSuccess();
+  } catch (e) { hideLoading(); showMsg('tk-main-msg', 'فشل في قراءة الملف', 'error'); }
+}
+
+function tk_showFileSuccess() {
+  document.getElementById('tk-file-name-display').textContent = tk_fileName;
+  document.getElementById('tk-file-success').style.display = 'flex';
+  document.getElementById('tk-continue-section').style.display = 'block';
+  document.getElementById('tk-upload-area').style.display = 'none';
+}
+
+function tk_confirmColumns() {
+  const t = document.getElementById('tk-col-taqwim').value.trim().toUpperCase();
+  const f = document.getElementById('tk-col-fard').value.trim().toUpperCase();
+  const i = document.getElementById('tk-col-ikhtibar').value.trim().toUpperCase();
+  if (!t || !f || !i) { alert('يرجى ملء جميع أعمدة الدرجات'); return; }
+  tk_colMap = { taqwim: t, fard: f, ikhtibar: i };
+  if (!tk_workbookData) { alert('لم يتم تحميل ملف Excel'); return; }
+  tk_sheets = tk_workbookData.SheetNames;
+  const container = document.getElementById('tk-sheets-list');
+  container.innerHTML = tk_sheets.map((name, idx) =>
+    '<button class="sheet-btn" style="animation-delay:'+idx*0.05+'s" onclick="tk_selectSheet(\''+name.replace(/'/g,"\\'")+'\','+idx+')"><span>'+name+'</span><span class="arrow" style="color:#d1d5db"><svg viewBox="0 0 24 24" style="width:20px;height:20px"><polyline points="9 18 15 12 9 6"/></svg></span></button>'
+  ).join('');
+  goToScreen('tk-sheets');
+}
+
+function tk_selectSheet(name, idx) {
+  tk_selectedSheet = name;
+  tk_selectedSheetIndex = idx;
+  tk_loadStudents();
+}
+
+function tk_loadStudents() {
+  const ws = tk_workbookData.Sheets[tk_selectedSheet]; if (!ws) return;
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const colIndices = { taqwim: tk_columnLetterToIndex(tk_colMap.taqwim), fard: tk_columnLetterToIndex(tk_colMap.fard), ikhtibar: tk_columnLetterToIndex(tk_colMap.ikhtibar) };
+  tk_students = [];
+  for (let rowIdx = 0; rowIdx < data.length; rowIdx++) {
+    const row = data[rowIdx]; if (!row || !Array.isArray(row)) continue;
+    const colB = String(row[1] ?? '').trim(); const colC = String(row[2] ?? '').trim();
+    const fullName = (colB + ' ' + colC).trim();
+    if (fullName && (colB+colC).length > 2 && !/[a-zA-Z0-9]/.test(colB+colC)) {
+      const grades = {};
+      for (const [key, colIdx] of Object.entries(colIndices)) {
+        const val = row[colIdx]; grades[key] = (val !== undefined && val !== null && val !== '') ? String(val) : '';
+      }
+      tk_students.push({ name: fullName, rowIndex: rowIdx, grades });
+    }
+  }
+  tk_renderStudents(); goToScreen('tk-list');
+}
+
+function tk_getStudentStatus(s) {
+  const f = Object.values(s.grades).filter(v => v.trim() !== '').length;
+  return f === 3 ? 'complete' : f > 0 ? 'partial' : 'empty';
+}
+
+function tk_renderStudents() {
+  document.getElementById('tk-list-title').textContent = tk_selectedSheet;
+  document.getElementById('tk-list-subtitle').textContent = tk_students.length + ' طالب • اضغط على الاسم لإدخال الدرجات';
+  const container = document.getElementById('tk-students-list');
+  if (tk_students.length === 0) { container.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:48px 0">لا يوجد طلاب</div>'; return; }
+  container.innerHTML = tk_students.map((s, idx) => {
+    const st = tk_getStudentStatus(s);
+    return '<button class="student-btn '+st+'" onclick="tk_openGradeScreen('+idx+')"><div class="student-info"><span class="student-num">'+(idx+1)+'</span><span class="student-name">'+s.name+'</span></div><span style="color:#9ca3af"><svg viewBox="0 0 24 24" style="width:20px;height:20px"><polyline points="9 18 15 12 9 6"/></svg></span></button>';
+  }).join('');
+}
+
+function tk_openGradeScreen(idx) {
+  tk_currentStudent = tk_students[idx];
+  tk_gradeInputs = { ...tk_currentStudent.grades };
+  document.getElementById('tk-grade-student-name').textContent = tk_currentStudent.name;
+  document.getElementById('tk-grade-taqwim').value = tk_gradeInputs.taqwim;
+  document.getElementById('tk-grade-fard').value = tk_gradeInputs.fard;
+  document.getElementById('tk-grade-ikhtibar').value = tk_gradeInputs.ikhtibar;
+  document.getElementById('tk-grade-error').style.display = 'none';
+  goToScreen('tk-grade');
+}
+
+function tk_handleGradeInput(input, key) {
+  let value = input.value;
+  if (value === '') { tk_gradeInputs[key] = ''; document.getElementById('tk-grade-error').style.display = 'none'; return; }
+  if (!/^\d*[,.]?\d{0,2}$/.test(value)) { input.value = tk_gradeInputs[key]; return; }
+  const numCheck = parseFloat(value.replace(',', '.'));
+  if (!isNaN(numCheck) && numCheck > 20) { input.value = tk_gradeInputs[key]; return; }
+  tk_gradeInputs[key] = value;
+  document.getElementById('tk-grade-error').style.display = 'none';
+}
+
+// ============================================
+// ★★★ JSZip SURGICAL XML EDITING FOR XLSX ★★★
+// This is the KEY fix: instead of XLSX.write()
+// which creates a new file losing all formatting,
+// we open the .xlsx as ZIP, find the sheet XML,
+// and ONLY modify the specific cell values.
+// ============================================
+
+async function tk_surgicalEditXlsx(gradeChanges) {
+  // gradeChanges: array of { colLetter, excelRow (1-based), value }
+  // Returns: Blob of modified .xlsx
+
+  const zip = await JSZip.loadAsync(tk_originalArrayBuffer);
+
+  // Find the correct worksheet file
+  // workbook.xml maps sheet names to rId's
+  // xl/workbook.xml -> <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
+  // xl/_rels/workbook.xml.rels -> <Relationship Id="rId1" Target="worksheets/sheet1.xml"/>
+
+  const wbFile = zip.file('xl/workbook.xml');
+  const relsFile = zip.file('xl/_rels/workbook.xml.rels');
+  if (!wbFile || !relsFile) {
+    // Fallback: use sheet index directly
+    const sheetIdx = tk_selectedSheetIndex + 1;
+    const sheetPath = 'xl/worksheets/sheet' + sheetIdx + '.xml';
+    return await tk_modifySheetXml(zip, sheetPath, gradeChanges);
+  }
+  const wbXml = await wbFile.async('string');
+  const relsXml = await relsFile.async('string');
+
+  // Find rId for the selected sheet
+  const sheetNameEscaped = tk_selectedSheet.replace(/([.*+?^${}()|[\]\\])/g, '\\$1');
+  const sheetRIdMatch = wbXml.match(new RegExp('name="' + sheetNameEscaped + '"[^>]*r:id="(rId\\d+)"', 'i'));
+  // Also try reverse order (r:id before name)
+  const sheetRIdMatch2 = !sheetRIdMatch ? wbXml.match(new RegExp('r:id="(rId\\d+)"[^>]*name="' + sheetNameEscaped + '"', 'i')) : null;
+  const sheetRId = (sheetRIdMatch || sheetRIdMatch2 || [])[1];
+
+  if (!sheetRId) {
+    // Fallback: use sheet index
+    const sheetIdx = tk_selectedSheetIndex + 1;
+    const sheetPath = 'xl/worksheets/sheet' + sheetIdx + '.xml';
+    return await tk_modifySheetXml(zip, sheetPath, gradeChanges);
+  }
+
+  // Find target file from rels
+  const relMatch = relsXml.match(new RegExp('Id="' + sheetRId + '"[^>]*Target="([^"]+)"'));
+  const relMatch2 = !relMatch ? relsXml.match(new RegExp('Target="([^"]+)"[^>]*Id="' + sheetRId + '"')) : null;
+  let targetPath = (relMatch || relMatch2 || [])[1];
+
+  if (!targetPath) {
+    const sheetIdx = tk_selectedSheetIndex + 1;
+    targetPath = 'worksheets/sheet' + sheetIdx + '.xml';
+  }
+
+  // Ensure full path
+  let sheetPath = targetPath;
+  if (!sheetPath.startsWith('xl/')) sheetPath = 'xl/' + sheetPath;
+
+  return await tk_modifySheetXml(zip, sheetPath, gradeChanges);
+}
+
+async function tk_modifySheetXml(zip, sheetPath, gradeChanges) {
+  const sheetFile = zip.file(sheetPath);
+  if (!sheetFile) {
+    throw new Error('ورقة العمل غير موجودة: ' + sheetPath);
+  }
+  let sheetXml = await sheetFile.async('string');
+
+  for (const change of gradeChanges) {
+    const cellRef = change.colLetter + change.excelRow;
+    const value = change.value;
+
+    // Check if cell exists in XML
+    // Cell format: <c r="E5" s="24" t="n"><v>15</v></c>
+    // Or: <c r="E5" s="24"/>  (empty cell with style)
+    const cellRegex = new RegExp('<c\\s+r="' + cellRef + '"[^>]*?(?:/>|>.*?</c>)', 'i');
+    const existingCell = sheetXml.match(cellRegex);
+
+    if (value === '' || value === undefined || value === null) {
+      // Empty the cell value but preserve the cell with its style
+      if (existingCell) {
+        let modified = existingCell[0];
+        // Remove type attribute if present
+        modified = modified.replace(/\s+t="[^"]*"/i, '');
+        // Remove <v>...</v> if present
+        modified = modified.replace(/<v>[^<]*<\/v>/i, '');
+        // Convert to self-closing if it became <c ...></c>
+        if (modified.includes('</c>')) {
+          modified = modified.replace('></c>', '/>');
+        }
+        sheetXml = sheetXml.replace(cellRegex, modified);
+      }
+      // If cell doesn't exist, don't add it (keep original intact)
+      continue;
+    }
+
+    const numVal = parseFloat(value);
+    const isNumber = !isNaN(numVal);
+    const tAttr = isNumber ? '' : ' t="str"';
+    const vContent = isNumber ? String(numVal) : value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    if (existingCell) {
+      // Modify existing cell
+      let modified = existingCell[0];
+      // Remove old t attribute
+      modified = modified.replace(/\s+t="[^"]*"/i, '');
+      // Insert t attribute after r attribute (using new RegExp for variable interpolation)
+      modified = modified.replace(new RegExp('(r="' + cellRef + '")', 'i'), '$1' + tAttr);
+      // Update <v> content
+      if (modified.includes('<v>')) {
+        modified = modified.replace(/<v>[^<]*<\/v>/i, '<v>' + vContent + '</v>');
+      } else if (modified.includes('/>')) {
+        // Self-closing cell, add <v> and convert to open tag
+        modified = modified.replace(/\/>/i, '><v>' + vContent + '</v></c>');
+      } else {
+        // Has </c> but no <v>
+        modified = modified.replace(/<\/c>/i, '<v>' + vContent + '</v></c>');
+      }
+      sheetXml = sheetXml.replace(cellRegex, modified);
+    } else {
+      // Cell doesn't exist - add it
+      // Find the row that contains this cell
+      const rowRegex = new RegExp('<row\\s+r="' + change.excelRow + '"[^>]*>([\\s\\S]*?)</row>', 'i');
+      const rowMatch = sheetXml.match(rowRegex);
+      if (rowMatch) {
+        // Add cell inside the row, before </row>
+        const newCell = '<c r="' + cellRef + '"' + tAttr + '><v>' + vContent + '</v></c>';
+        sheetXml = sheetXml.replace(rowRegex, function(fullMatch, rowContent) {
+          return fullMatch.replace('</row>', newCell + '</row>');
+        });
+      }
+      // If row doesn't exist either, we could add it but that's rare for grade entry
+    }
+  }
+
+  // Write modified sheet XML back to zip
+  zip.file(sheetPath, sheetXml);
+
+  // Generate new .xlsx blob
+  const newBlob = await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+
+  return newBlob;
+}
+
+// ---- Helper: write blob directly to original file via File System Access API ----
+async function tk_writeToOriginalFile(blob) {
+  // Returns true if written directly, false if not possible
+  if (!tk_fileHandle) return false;
+  try {
+    const writable = await tk_fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return true;
+  } catch (e) {
+    console.warn('Direct file write failed:', e);
+    return false;
+  }
+}
+
+// ---- Save Grades (JSZip surgical + direct write) ----
+async function tk_saveGrades() {
+  if (!tk_currentStudent || !tk_workbookData) return;
+  // Validate
+  for (const [key, val] of Object.entries(tk_gradeInputs)) {
+    if (val.trim() !== '') {
+      const n = parseFloat(val.replace(',', '.'));
+      if (isNaN(n) || n < 0 || n > 20) {
+        const el = document.getElementById('tk-grade-error');
+        el.innerHTML = '<span>يرجى إدخال درجة صحيحة (0-20)</span>'; el.style.display = 'flex'; return;
+      }
+    }
+  }
+
+  showLoading('جاري الحفظ...');
+
+  try {
+    const excelRow = tk_currentStudent.rowIndex + 1; // 1-based for Excel
+    const gradeChanges = [];
+    for (const [key, val] of Object.entries(tk_gradeInputs)) {
+      const normalized = val.trim().replace(',', '.');
+      gradeChanges.push({ colLetter: tk_colMap[key], excelRow: excelRow, value: normalized });
+    }
+
+    const newBlob = await tk_surgicalEditXlsx(gradeChanges);
+
+    // ★ Try to write DIRECTLY to the original file ★
+    const savedDirectly = await tk_writeToOriginalFile(newBlob);
+
+    // Update originalArrayBuffer so subsequent edits are cumulative
+    tk_originalArrayBuffer = await newBlob.arrayBuffer();
+    tk_workbookData = XLSX.read(tk_originalArrayBuffer, { type: 'array' });
+
+    // Update local students array
+    for (let i = 0; i < tk_students.length; i++) {
+      if (tk_students[i].rowIndex === tk_currentStudent.rowIndex) {
+        for (const key of Object.keys(tk_gradeInputs)) {
+          tk_students[i].grades[key] = tk_gradeInputs[key].replace(',', '.');
+        }
+        break;
+      }
+    }
+
+    hideLoading();
+    if (savedDirectly) {
+      showToast('تم الحفظ مباشرة في الملف الأصلي ✓');
+    } else {
+      showToast('تم الحفظ في الذاكرة – اضغط حفظ للتصدير');
+    }
+    tk_renderStudents(); goToScreen('tk-list');
+  } catch (e) {
+    hideLoading();
+    console.error('Save error:', e);
+    showToast('خطأ في الحفظ: ' + e.message, '#dc2626');
+  }
+}
+
+// ---- Save / Export (JSZip surgical + direct write first) ----
+async function tk_saveAndDownload() {
+  if (!tk_workbookData) return;
+  showLoading('جاري الحفظ...');
+
+  try {
+    // Collect ALL grade changes from all students
+    const gradeChanges = [];
+    for (const student of tk_students) {
+      const excelRow = student.rowIndex + 1;
+      for (const [key, val] of Object.entries(student.grades)) {
+        const normalized = val.trim().replace(',', '.');
+        gradeChanges.push({ colLetter: tk_colMap[key], excelRow: excelRow, value: normalized });
+      }
+    }
+
+    const newBlob = await tk_surgicalEditXlsx(gradeChanges);
+
+    // ★ Try to write DIRECTLY to the original file first ★
+    const savedDirectly = await tk_writeToOriginalFile(newBlob);
+
+    if (savedDirectly) {
+      // Update originalArrayBuffer so subsequent edits are cumulative
+      tk_originalArrayBuffer = await newBlob.arrayBuffer();
+      tk_workbookData = XLSX.read(tk_originalArrayBuffer, { type: 'array' });
+      hideLoading();
+      showToast('تم الحفظ مباشرة في الملف الأصلي ✓');
+    } else {
+      // Fallback: download the modified file with the same name
+      saveAs(newBlob, tk_fileName || 'grades.xlsx');
+      hideLoading();
+      showToast('تم تحميل الملف المعدّل – استبدل الأصلي به');
+    }
+  } catch (e) {
+    hideLoading();
+    console.error('Save error:', e);
+    showToast('خطأ في الحفظ: ' + e.message, '#dc2626');
+  }
+}
+
+// ============================================
+// IMTIHAN (إمتحان) - Exam Document Generator
+// ============================================
+
+let im_schoolType = 'متوسطة';
+let im_examType = 'اختبار';
+let im_exercises = [];
+let im_editingIndex = -1;
+
+function im_setSchoolType(btn, type) {
+  im_schoolType = type;
+  btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function im_setExamType(btn, type) {
+  im_examType = type;
+  btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function im_renderExercises() {
+  const container = document.getElementById('im-exercise-list');
+  container.innerHTML = im_exercises.map((ex, idx) =>
+    '<div class="exercise-chip"><span class="name">التمرين ' + (idx+1) + '</span><div class="actions"><button class="chip-btn chip-edit" onclick="im_openExerciseModal('+idx+')">✎</button><button class="chip-btn chip-del" onclick="im_deleteExercise('+idx+')">✕</button></div></div>'
+  ).join('');
+}
+
+function im_openExerciseModal(idx) {
+  im_editingIndex = idx;
+  const modal = document.getElementById('screen-im-exercise-modal');
+  const textarea = document.getElementById('im-exercise-input');
+  if (idx >= 0 && im_exercises[idx]) {
+    document.getElementById('im-exercise-modal-title').textContent = 'تعديل التمرين ' + (idx+1);
+    textarea.value = im_exercises[idx];
+  } else {
+    document.getElementById('im-exercise-modal-title').textContent = 'إضافة تمرين';
+    textarea.value = '';
+  }
+  document.getElementById('im-symbols-panel').classList.remove('open');
+  modal.classList.add('open');
+}
+
+function im_closeExerciseModal() {
+  document.getElementById('screen-im-exercise-modal').classList.remove('open');
+}
+
+function im_saveExercise() {
+  const text = document.getElementById('im-exercise-input').value.trim();
+  if (!text) return;
+  if (im_editingIndex >= 0) { im_exercises[im_editingIndex] = text; }
+  else { im_exercises.push(text); }
+  im_renderExercises(); im_closeExerciseModal();
+}
+
+function im_clearExercise() { document.getElementById('im-exercise-input').value = ''; }
+
+function im_deleteExercise(idx) { im_exercises.splice(idx, 1); im_renderExercises(); }
+
+// Math symbols
+const im_symbols = ['+','−','×','÷','=','≠','<','>','≤','≥','±','√','∑','∫','π','∠','△','⊥','∥','∞','°','½','⅓','⅔','¼','¾','¹','²','³','₀','₁','₂','₃','α','β','γ','θ','λ','μ','σ','φ','ω','∈','∉','∪','∩','⊂','⊃'];
+
+function im_initSymbols() {
+  const grid = document.getElementById('im-symbols-grid');
+  grid.innerHTML = im_symbols.map(s => '<button class="sym-btn" onclick="im_insertSymbol(\''+s+'\')">'+s+'</button>').join('');
+}
+
+function im_toggleSymbols() { document.getElementById('im-symbols-panel').classList.toggle('open'); }
+
+function im_insertSymbol(sym) {
+  const ta = document.getElementById('im-exercise-input');
+  const start = ta.selectionStart; const end = ta.selectionEnd;
+  ta.value = ta.value.substring(0, start) + sym + ta.value.substring(end);
+  ta.selectionStart = ta.selectionEnd = start + sym.length;
+  ta.focus();
+}
+
+// ---- Generate Word Document ----
+async function im_generateWord() {
+  if (im_exercises.length === 0) { showToast('أضف تمريناً واحداً على الأقل', '#f59e0b'); return; }
+
+  showLoading('جاري توليد الملف...');
+
+  try {
+    const dir = document.getElementById('im-f-dir').value.trim();
+    const sch = document.getElementById('im-f-sch').value.trim();
+    const lvl = document.getElementById('im-f-lvl').value.trim();
+    const sub = document.getElementById('im-f-sub').value.trim();
+    const dateVal = document.getElementById('im-f-date').value;
+    const dur = document.getElementById('im-f-dur').value.trim();
+    const trm = document.getElementById('im-f-trm').value.trim();
+
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageBreak, HeadingLevel, ShadingType, TabStopType, TabStopPosition } = docx;
+
+    const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+
+    // Header table (3 columns, borderless, bidiVisual)
+    const headerTable = new Table({
+      rows: [
+        new TableRow({ children: [
+          new TableCell({ width: { size: 3200, type: WidthType.DXA }, borders: noBorders, children: [
+            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'الجمهورية الجزائرية الديمقراطية الشعبية', font: 'Traditional Arabic', size: 22 })] }),
+            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'وزارة التربية الوطنية', font: 'Traditional Arabic', size: 22 })] }),
+          ]}),
+          new TableCell({ width: { size: 3706, type: WidthType.DXA }, borders: noBorders, children: [
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: im_schoolType, font: 'Traditional Arabic', size: 24, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: dir || '..........', font: 'Traditional Arabic', size: 22 })] }),
+          ]}),
+          new TableCell({ width: { size: 3200, type: WidthType.DXA }, borders: noBorders, children: [
+            new Paragraph({ alignment: AlignmentType.LEFT, children: [new TextRun({ text: sch || '..........', font: 'Traditional Arabic', size: 22 })] }),
+            new Paragraph({ alignment: AlignmentType.LEFT, children: [new TextRun({ text: im_examType + ' ' + trm ? im_examType + ' الثلاثي ' + (trm || '..') : im_examType, font: 'Traditional Arabic', size: 22 })] }),
+          ]}),
+        ]}),
+      ],
+    });
+
+    // Exam title
+    const examTitle = new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 200, after: 100 },
+      children: [new TextRun({ text: im_examType + ' الثلاثي ' + (trm || '..') + ' في مادة ' + (sub || '..........'), font: 'Traditional Arabic', size: 28, bold: true })],
+    });
+
+    // Info line
+    const infoLine = new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [
+        new TextRun({ text: 'المستوى: ' + (lvl || '..........'), font: 'Traditional Arabic', size: 24 }),
+        new TextRun({ text: '          ', font: 'Traditional Arabic' }),
+        new TextRun({ text: 'المدة: ' + (dur || '..........'), font: 'Traditional Arabic', size: 24 }),
+        new TextRun({ text: '          ', font: 'Traditional Arabic' }),
+        new TextRun({ text: 'التاريخ: ' + (dateVal || '..........'), font: 'Traditional Arabic', size: 24 }),
+      ],
+    });
+
+    // Exercises
+    const exerciseParagraphs = [];
+    for (let i = 0; i < im_exercises.length; i++) {
+      exerciseParagraphs.push(new Paragraph({
+        spacing: { before: 200, after: 100 },
+        children: [new TextRun({ text: 'التمرين ' + (i + 1) + ':', font: 'Traditional Arabic', size: 26, bold: true, underline: {} })],
+      }));
+      const lines = im_exercises[i].split('\n');
+      for (const line of lines) {
+        exerciseParagraphs.push(new Paragraph({
+          spacing: { after: 50 },
+          children: [new TextRun({ text: line, font: 'Traditional Arabic', size: 24 })],
+        }));
+      }
+    }
+
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: {
+            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            borders: {
+              pageBorderTop: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
+              pageBorderBottom: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
+              pageBorderLeft: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
+              pageBorderRight: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
+            },
+          },
+        },
+        children: [headerTable, examTitle, infoLine, ...exerciseParagraphs],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+
+    // JSZip post-processing for bidiVisual and tblCellMar
+    const zip = await JSZip.loadAsync(blob);
+    const docXml = await zip.file('word/document.xml').async('string');
+    let modified = docXml.replace(/<w:tblPr>/g,
+      '<w:tblPr><w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>');
+    zip.file('word/document.xml', modified);
+    const newBlob = await zip.generateAsync({ type: 'blob' });
+
+    saveAs(newBlob, im_examType + '_' + (sub || 'امتحان') + '.docx');
+    hideLoading();
+    showToast('تم توليد الملف بنجاح');
+  } catch (e) {
+    hideLoading();
+    console.error('Generate error:', e);
+    showToast('خطأ في توليد الملف: ' + e.message, '#dc2626');
+  }
+}
+
+// ============================================
+// APP INITIALIZATION
+// ============================================
+
+function init() {
+  im_initSymbols();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('im-f-date').value = today;
+
+  setTimeout(() => {
+    const savedCode = localStorage.getItem('ha9iba_code');
+    const savedExpiry = localStorage.getItem('ha9iba_expiry');
+    if (savedCode && savedExpiry) { verifySavedCode(savedCode); }
+    else { goToScreen('activation'); }
+  }, 2200);
+}
+
+init();
+
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      console.log('SW registered:', reg.scope);
+    }).catch(err => { console.warn('SW failed:', err); });
+  });
+}
+</script>
+</body>
+</html>
