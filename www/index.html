@@ -610,6 +610,7 @@
       <div style="background:#f0fdf4;border:3px solid #22c55e;border-radius:16px;padding:16px;text-align:center">
         <div style="font-weight:800;color:#16a34a;font-size:1.15rem;margin-bottom:6px">تم توليد الملف بنجاح</div>
         <div id="im-filename-display" style="font-size:0.85rem;color:#6b7280;margin-bottom:12px"></div>
+        <div id="im-debug-info" style="display:none;font-size:0.7rem;color:#9ca3af;margin-bottom:8px;text-align:left;direction:ltr;background:#f9fafb;padding:6px;border-radius:6px;word-break:break-all;max-height:80px;overflow-y:auto"></div>
         <button id="im-share-btn" class="btn btn-success" style="height:56px;font-size:1.15rem;font-weight:700;margin-bottom:8px" onclick="im_shareFile()">
           <svg viewBox="0 0 24 24" style="width:22px;height:22px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           مشاركة / حفظ الملف
@@ -1462,6 +1463,15 @@ async function im_generateWord() {
     
     hideLoading();
     
+    // Show debug info for Capacitor
+    const dbgEl = document.getElementById('im-debug-info');
+    if (im_isCapacitor()) {
+      const FS = _getCapPlugin('Filesystem');
+      const SH = _getCapPlugin('Share');
+      dbgEl.style.display = 'block';
+      dbgEl.textContent = 'Cap:true | FS:' + !!FS + ' | SH:' + !!SH + ' | share:' + !!navigator.share + ' | blob:' + finalBlob.size;
+    }
+    
     // ★ Auto-deliver the file immediately ★
     const delivered = await im_deliverFile(finalBlob, fileName);
     
@@ -1471,6 +1481,10 @@ async function im_generateWord() {
     
     if (!delivered) {
       showToast('اضغط مشاركة/حفظ للحصول على الملف', '#f59e0b');
+      // Update debug info
+      if (dbgEl) dbgEl.textContent += ' | ALL_METHODS_FAILED';
+    } else {
+      if (dbgEl) dbgEl.textContent += ' | DELIVERED:true';
     }
 
   } catch (e) {
