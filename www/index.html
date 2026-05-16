@@ -1352,27 +1352,72 @@ async function im_generateWord() {
   }
 }
 
-// ---- Universal download function (works in WebView / APK too) ----
+// ---- Convert blob to base64 ----
+function im_blobToBase64(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ---- Universal download function (works in WebView / APK / Browser) ----
 async function im_downloadBlob(blob, fileName) {
-  // Method 1: Web Share API (best for Android WebView/APK)
-  // Opens Android share sheet → user can save to Files, Google Drive, etc.
+  // Method 1: Capacitor native plugins (best for APK/WebView)
+  if (window.Capacitor && window.Capacitor.Plugins) {
+    try {
+      const FS = window.Capacitor.Plugins.Filesystem;
+      const SH = window.Capacitor.Plugins.Share;
+      if (FS && SH) {
+        // Convert blob to base64
+        const base64Data = await im_blobToBase64(blob);
+        const pureBase64 = base64Data.split(',')[1] || base64Data;
+
+        // Write file to Documents directory (visible to user)
+        const writeResult = await FS.writeFile({
+          path: fileName,
+          data: pureBase64,
+          directory: 'DOCUMENTS',
+          recursive: true,
+        });
+
+        // Share the file via Android share sheet
+        try {
+          await SH.share({
+            title: fileName,
+            url: writeResult.uri,
+            dialogTitle: 'حفظ أو مشاركة الملف',
+          });
+        } catch(shareErr) {
+          // User cancelled share or share failed - file is still saved
+          if (shareErr.message && shareErr.message.includes('cancel')) {
+            showToast('تم حفظ الملف في Documents/' + fileName);
+          } else {
+            showToast('تم حفظ الملف في Documents/' + fileName);
+          }
+        }
+        return; // Done!
+      }
+    } catch(e) {
+      console.warn('Capacitor plugins failed, trying fallback:', e);
+    }
+  }
+
+  // Method 2: Web Share API (Android browser)
   if (navigator.share && navigator.canShare) {
     try {
       const file = new File([blob], fileName, { type: blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: fileName
-        });
-        return; // Success!
+        await navigator.share({ files: [file], title: fileName });
+        return;
       }
     } catch(e) {
-      if (e.name === 'AbortError') return; // User cancelled share
+      if (e.name === 'AbortError') return;
       console.warn('Share failed, trying fallback:', e);
     }
   }
 
-  // Method 2: FileSaver (works in regular Chrome/Edge browser)
+  // Method 3: FileSaver (Chrome/Edge desktop browser)
   try {
     if (typeof saveAs === 'function') {
       saveAs(blob, fileName);
@@ -1380,32 +1425,17 @@ async function im_downloadBlob(blob, fileName) {
     }
   } catch(e) {}
 
-  // Method 3: Anchor click with object URL
+  // Method 4: Anchor download attribute
   try {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 5000);
+    a.href = url; a.download = fileName; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 5000);
     return;
   } catch(e) {}
 
-  // Method 4: Data URL in new window
-  try {
-    const reader = new FileReader();
-    reader.onload = function() {
-      window.open(reader.result, '_blank');
-    };
-    reader.readAsDataURL(blob);
-  } catch(e) {
-    alert('لم يتمكن من تحميل الملف');
-  }
+  alert('لم يتمكن من تحميل الملف');
 }
 
 // ---- Project Save / Load ----
