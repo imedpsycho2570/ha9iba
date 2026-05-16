@@ -603,19 +603,17 @@
     </button>
     <!-- Download area - appears after file generation -->
     <div id="im-download-area" style="display:none;margin-bottom:16px;width:100%">
-      <div style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:14px;padding:14px;text-align:center">
-        <div style="font-weight:700;color:#16a34a;font-size:1rem;margin-bottom:10px">✓ تم توليد الملف بنجاح</div>
-        <div id="im-filename-display" style="font-size:0.85rem;color:#6b7280;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px">
-          <button id="im-share-btn" class="btn btn-success" style="flex:1;height:48px;font-size:0.95rem" onclick="im_shareFile()">
-            <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            مشاركة/حفظ
-          </button>
-          <button id="im-open-browser-btn" class="btn btn-outline" style="flex:1;height:48px;font-size:0.95rem;border-color:#2563eb;color:#2563eb" onclick="im_openInBrowser()">
-            <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            فتح في المتصفح
-          </button>
-        </div>
+      <div style="background:#f0fdf4;border:3px solid #22c55e;border-radius:16px;padding:16px;text-align:center">
+        <div style="font-weight:800;color:#16a34a;font-size:1.15rem;margin-bottom:6px">تم توليد الملف بنجاح</div>
+        <div id="im-filename-display" style="font-size:0.85rem;color:#6b7280;margin-bottom:12px"></div>
+        <button id="im-share-btn" class="btn btn-success" style="height:56px;font-size:1.15rem;font-weight:700;margin-bottom:8px" onclick="im_shareFile()">
+          <svg viewBox="0 0 24 24" style="width:22px;height:22px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          مشاركة / حفظ الملف
+        </button>
+        <button id="im-open-browser-btn" class="btn btn-outline" style="height:44px;font-size:0.9rem;border-color:#2563eb;color:#2563eb" onclick="im_openInBrowser()">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          فتح في المتصفح
+        </button>
       </div>
     </div>
   </div>
@@ -1447,16 +1445,8 @@ async function im_generateWord() {
     // JSZip post-processing: add bidiVisual + tblCellMar to tables
     const zip = await JSZip.loadAsync(rawBlob);
     let xml = await zip.file('word/document.xml').async('string');
-    // More robust regex: also match <w:tblPr with attributes>
-    xml = xml.replace(/<w:tblPr([^>]*)>/g, function(match, attrs) {
-      // Don't add bidiVisual if it already exists
-      if (attrs.includes('bidiVisual') || match.includes('bidiVisual')) return match;
-      return match + '<w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>';
-    });
-    // Also add bidiVisual to existing tblPr that don't have it (in case docx.js added its own)
-    xml = xml.replace(/<w:tblPr>((?!.*bidiVisual)[^<]*)<\/w:tblPr>/g, function(match) {
-      return match.replace('</w:tblPr>', '<w:bidiVisual/></w:tblPr>');
-    });
+    // Add <w:bidiVisual/> and <w:tblCellMar> with zeros inside each <w:tblPr>
+    xml = xml.replace(/<w:tblPr>/g, '<w:tblPr><w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>');
     await zip.file('word/document.xml', xml);
     const finalBlob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 
@@ -1465,13 +1455,19 @@ async function im_generateWord() {
     // Store blob for later share/download
     im_lastGeneratedBlob = finalBlob;
     im_lastFileName = fileName;
-    im_lastDataUrl = await im_blobToDataUrl(finalBlob);
     
     hideLoading();
     
-    // Show the download area with share buttons
+    // ★ Auto-deliver the file immediately ★
+    const delivered = await im_deliverFile(finalBlob, fileName);
+    
+    // Always show download area for re-download
     document.getElementById('im-download-area').style.display = 'block';
     document.getElementById('im-filename-display').textContent = fileName;
+    
+    if (!delivered) {
+      showToast('اضغط مشاركة/حفظ للحصول على الملف', '#f59e0b');
+    }
 
   } catch (e) {
     hideLoading();
@@ -1483,32 +1479,33 @@ async function im_generateWord() {
 // ---- File Storage for Share/Download ----
 let im_lastGeneratedBlob = null;
 let im_lastFileName = '';
-let im_lastDataUrl = '';
 
-// ---- Convert blob to data URL ----
-function im_blobToDataUrl(blob) {
+// ---- Convert blob to pure base64 string ----
+function im_blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
+    reader.onloadend = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(',')[1] || dataUrl;
+      resolve(base64);
+    };
     reader.onerror = () => reject(new Error('FileReader error'));
     reader.readAsDataURL(blob);
   });
 }
 
-// ---- Convert blob to pure base64 string ----
-function im_blobToBase64(blob) {
-  return im_blobToDataUrl(blob).then(dataUrl => dataUrl.split(',')[1] || dataUrl);
+// ---- Check if running in Capacitor native app ----
+function im_isCapacitor() {
+  return window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
 }
 
 // ---- Get or register a Capacitor plugin ----
 function _getCapPlugin(name) {
   if (!window.Capacitor) return null;
   try {
-    // Check auto-registered plugins first
     if (window.Capacitor.Plugins && window.Capacitor.Plugins[name]) {
       return window.Capacitor.Plugins[name];
     }
-    // Try registerPlugin
     if (typeof window.Capacitor.registerPlugin === 'function') {
       return window.Capacitor.registerPlugin(name);
     }
@@ -1518,223 +1515,181 @@ function _getCapPlugin(name) {
   return null;
 }
 
-// ---- Share/Save button handler ----
-async function im_shareFile() {
-  if (!im_lastGeneratedBlob) { showToast('لم يتم توليد ملف بعد', '#dc2626'); return; }
+// ============================================
+// ★★★ UNIVERSAL FILE DELIVERY ★★★
+// Works in both Capacitor APK and regular browser
+// ============================================
+async function im_deliverFile(blob, fileName) {
+  const isCap = im_isCapacitor();
+  const mimeType = blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   
-  const blob = im_lastGeneratedBlob;
-  const fileName = im_lastFileName;
-  const isCap = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
-  
-  // === METHOD 1: Capacitor native plugins ===
+  // ====== CAPACITOR NATIVE APP ======
   if (isCap) {
-    const FS = _getCapPlugin('Filesystem');
-    const SH = _getCapPlugin('Share');
+    // ★ METHOD 1: Web Share API with File object (BEST for Android)
+    // This triggers the Android share sheet: Save to Drive, Send, Open with...
+    if (navigator.share) {
+      try {
+        const file = new File([blob], fileName, { type: mimeType });
+        // Check if sharing files is supported
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: fileName });
+          showToast('تم مشاركة/حفظ الملف بنجاح ✓');
+          return true;
+        }
+        // Try without canShare check
+        await navigator.share({ files: [file], title: fileName });
+        showToast('تم مشاركة/حفظ الملف بنجاح ✓');
+        return true;
+      } catch(e) {
+        if (e.name === 'AbortError') {
+          showToast('تم حفظ الملف ✓');
+          return true; // User cancelled share but file was available
+        }
+        console.warn('Web Share API failed:', e.message || e);
+      }
+    }
     
+    // ★ METHOD 2: Capacitor Filesystem (write to device) + Share plugin
+    const FS = _getCapPlugin('Filesystem');
     if (FS) {
       try {
         showLoading('جاري حفظ الملف...');
-        let pureBase64 = await im_blobToBase64(blob);
-        
+        const pureBase64 = await im_blobToBase64(blob);
         let writeResult = null;
-        let savedLocation = '';
+        let savedPath = '';
         
-        // Try CACHE directory first (no permissions needed)
-        try {
-          writeResult = await Promise.race([
-            FS.writeFile({
-              path: fileName,
-              data: pureBase64,
-              directory: 'CACHE',
-              recursive: true,
-            }),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('writeFile timeout')), 15000))
-          ]);
-          savedLocation = writeResult.uri || fileName;
-        } catch(cacheErr) {
-          console.warn('CACHE write failed:', cacheErr.message || cacheErr);
-          // Try DOCUMENTS directory
+        // Try multiple directories with CORRECT encoding: 'base64'
+        const dirs = [
+          { dir: 'DOCUMENTS', path: fileName },
+          { dir: 'EXTERNAL_STORAGE', path: 'Download/' + fileName },
+          { dir: 'CACHE', path: fileName },
+        ];
+        
+        for (const d of dirs) {
           try {
-            writeResult = await Promise.race([
-              FS.writeFile({
-                path: fileName,
-                data: pureBase64,
-                directory: 'DOCUMENTS',
-                recursive: true,
-              }),
-              new Promise((_, rej) => setTimeout(() => rej(new Error('writeFile timeout')), 15000))
-            ]);
-            savedLocation = writeResult.uri || fileName;
-          } catch(docsErr) {
-            console.warn('DOCUMENTS write failed:', docsErr.message || docsErr);
-            // Try EXTERNAL_STORAGE/Download
-            try {
-              writeResult = await Promise.race([
-                FS.writeFile({
-                  path: 'Download/' + fileName,
-                  data: pureBase64,
-                  directory: 'EXTERNAL_STORAGE',
-                  recursive: true,
-                }),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('writeFile timeout')), 15000))
-              ]);
-              savedLocation = writeResult.uri || ('Download/' + fileName);
-            } catch(extErr) {
-              console.warn('EXTERNAL_STORAGE write failed:', extErr.message || extErr);
-            }
+            writeResult = await FS.writeFile({
+              path: d.path,
+              data: pureBase64,
+              directory: d.dir,
+              encoding: 'base64',  // ★★★ CRITICAL: Required for binary files!
+              recursive: true,
+            });
+            savedPath = writeResult.uri || d.path;
+            console.log('File written to:', d.dir + '/' + d.path, '→', savedPath);
+            break;
+          } catch(err) {
+            console.warn('Write to ' + d.dir + ' failed:', err.message || err);
           }
         }
         
         hideLoading();
         
         if (writeResult) {
-          // Try sharing via Share plugin
+          // Try sharing the saved file via Share plugin
+          const SH = _getCapPlugin('Share');
           if (SH) {
             try {
               await SH.share({
                 title: fileName,
-                url: writeResult.uri || savedLocation,
+                text: fileName,
+                url: savedPath,
                 dialogTitle: 'حفظ أو مشاركة الملف',
               });
-              return; // Share completed successfully
+              showToast('تم حفظ الملف بنجاح ✓');
+              return true;
             } catch(shareErr) {
-              // User cancelled share or share failed - file is still saved
-              if (shareErr && shareErr.name === 'AbortError') {
-                showToast('تم حفظ الملف ✓');
-                return;
-              }
-              // Share failed but file was saved
-              showToast('تم حفظ الملف في: ' + savedLocation);
-              return;
+              // Share cancelled/failed but file IS saved on device
+              showToast('تم حفظ الملف في الجهاز ✓');
+              return true;
             }
-          } else {
-            // No Share plugin, but file was saved - try Web Share API as alternative
-            if (navigator.share) {
-              try {
-                const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                await navigator.share({ files: [file], title: fileName });
-                return;
-              } catch(e) {
-                if (e.name === 'AbortError') { showToast('تم حفظ الملف ✓'); return; }
-              }
-            }
-            showToast('تم حفظ الملف في: ' + savedLocation);
-            return;
           }
+          // No Share plugin but file was saved
+          showToast('تم حفظ الملف في الجهاز ✓');
+          return true;
         }
       } catch(e) {
         hideLoading();
         console.error('Capacitor Filesystem error:', e);
-        // Fall through to other methods
-      }
-    } else {
-      console.warn('Capacitor detected but Filesystem plugin not available - trying nativePromise directly');
-      // === METHOD 1b: Direct Capacitor bridge call ===
-      if (window.Capacitor.nativePromise) {
-        try {
-          showLoading('جاري حفظ الملف...');
-          let pureBase64 = await im_blobToBase64(blob);
-          
-          const writeResult = await Promise.race([
-            window.Capacitor.nativePromise('Filesystem', 'writeFile', {
-              path: fileName,
-              data: pureBase64,
-              directory: 'CACHE',
-              recursive: true,
-            }),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('nativePromise timeout')), 15000))
-          ]);
-          
-          hideLoading();
-          
-          if (writeResult) {
-            // Try sharing
-            try {
-              await window.Capacitor.nativePromise('Share', 'share', {
-                title: fileName,
-                url: writeResult.uri,
-                dialogTitle: 'حفظ أو مشاركة الملف',
-              });
-              return;
-            } catch(shareErr) {
-              showToast('تم حفظ الملف ✓');
-              return;
-            }
-          }
-        } catch(e) {
-          hideLoading();
-          console.error('Direct nativePromise error:', e);
-        }
       }
     }
-  }
-  
-  // === METHOD 2: Web Share API with files ===
-  if (navigator.share) {
-    try {
-      const file = new File([blob], fileName, {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      });
-      const shareData = { files: [file], title: fileName };
-      // Skip canShare check - try directly
-      await navigator.share(shareData);
-      return;
-    } catch(e) {
-      if (e.name === 'AbortError') {
-        showToast('تم إلغاء المشاركة');
-        return;
+    
+    // ★ METHOD 3: Web Share API (text only - no file support)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: fileName, text: 'ملف امتحان: ' + fileName });
+        return true;
+      } catch(e) {
+        if (e.name === 'AbortError') return true;
       }
-      console.warn('Web Share API failed:', e);
     }
+    
+    return false; // All Capacitor methods failed
   }
   
-  // === METHOD 3: FileSaver.js ===
+  // ====== REGULAR BROWSER ======
+  // ★ METHOD 1: FileSaver.js (most reliable in browsers)
   try {
     if (typeof saveAs === 'function') {
       saveAs(blob, fileName);
-      showToast('جاري التحميل...');
-      return;
+      showToast('جاري تحميل الملف...');
+      return true;
     }
   } catch(e) {}
   
-  // === METHOD 4: Blob URL download ===
+  // ★ METHOD 2: Blob URL download
   try {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = fileName; a.style.display = 'none';
     document.body.appendChild(a); a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 5000);
-    showToast('جاري التحميل...');
-    return;
+    showToast('جاري تحميل الملف...');
+    return true;
   } catch(e) {}
   
-  // === ALL METHODS FAILED - Show instructions ===
-  showToast('فشل التحميل - جرّب فتحه في المتصفح', '#dc2626');
+  return false; // All browser methods failed
+}
+
+// ---- Share/Save button handler (from download area) ----
+async function im_shareFile() {
+  if (!im_lastGeneratedBlob) { showToast('لم يتم توليد ملف بعد', '#dc2626'); return; }
+  await im_deliverFile(im_lastGeneratedBlob, im_lastFileName);
 }
 
 // ---- Open in external browser for download ----
-function im_openInBrowser() {
-  if (!im_lastDataUrl) { showToast('لم يتم توليد ملف بعد', '#dc2626'); return; }
+async function im_openInBrowser() {
+  if (!im_lastGeneratedBlob) { showToast('لم يتم توليد ملف بعد', '#dc2626'); return; }
   
-  // In Capacitor WebView, try to open in system browser
-  if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
-    // Try using Browser plugin
-    const Browser = _getCapPlugin('Browser');
-    if (Browser && Browser.open) {
-      Browser.open({ url: im_lastDataUrl }).catch(() => {});
+  // In Capacitor WebView: share via Web Share API
+  if (im_isCapacitor()) {
+    if (navigator.share) {
+      try {
+        const file = new File([im_lastGeneratedBlob], im_lastFileName, {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+        await navigator.share({ files: [file], title: im_lastFileName });
+        return;
+      } catch(e) {
+        if (e.name === 'AbortError') return;
+      }
     }
-    // Also try window.open - in Capacitor it opens in system browser
-    try { window.open(im_lastDataUrl, '_system'); } catch(e) {}
+    showToast('استخدم زر مشاركة/حفظ', '#f59e0b');
     return;
   }
   
-  // Regular browser - open in new tab
+  // Regular browser: open data URL in new tab
   try {
-    const newWin = window.open(im_lastDataUrl, '_blank');
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('FileReader error'));
+      reader.readAsDataURL(im_lastGeneratedBlob);
+    });
+    const newWin = window.open(dataUrl, '_blank');
     if (!newWin) {
       // Popup blocked - create a visible download link
       const a = document.createElement('a');
-      a.href = im_lastDataUrl;
+      a.href = dataUrl;
       a.download = im_lastFileName;
       a.textContent = 'اضغط هنا لتحميل: ' + im_lastFileName;
       a.style.cssText = 'display:block;padding:12px;margin:8px 0;background:#dbeafe;color:#2563eb;border-radius:10px;text-align:center;font-weight:600;text-decoration:none;';
@@ -1749,80 +1704,7 @@ function im_openInBrowser() {
 
 // ---- Universal download function (for Excel / Tankit section) ----
 async function im_downloadBlob(blob, fileName) {
-  const isCap = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
-  
-  // === METHOD 1: Capacitor native plugins ===
-  if (isCap) {
-    const FS = _getCapPlugin('Filesystem');
-    const SH = _getCapPlugin('Share');
-    
-    if (FS) {
-      try {
-        showLoading('جاري حفظ الملف...');
-        let pureBase64 = await im_blobToBase64(blob);
-        
-        let writeResult = null;
-        let savedLocation = '';
-        
-        try {
-          writeResult = await FS.writeFile({ path: fileName, data: pureBase64, directory: 'CACHE', recursive: true });
-          savedLocation = writeResult.uri || fileName;
-        } catch(e1) {
-          try {
-            writeResult = await FS.writeFile({ path: fileName, data: pureBase64, directory: 'DOCUMENTS', recursive: true });
-            savedLocation = writeResult.uri || fileName;
-          } catch(e2) {
-            try {
-              writeResult = await FS.writeFile({ path: 'Download/' + fileName, data: pureBase64, directory: 'EXTERNAL_STORAGE', recursive: true });
-              savedLocation = writeResult.uri || ('Download/' + fileName);
-            } catch(e3) {}
-          }
-        }
-        
-        hideLoading();
-        
-        if (writeResult) {
-          if (SH) {
-            try {
-              await SH.share({ title: fileName, url: writeResult.uri || savedLocation, dialogTitle: 'حفظ أو مشاركة الملف' });
-              return;
-            } catch(shareErr) {
-              showToast('تم حفظ الملف ✓');
-              return;
-            }
-          }
-          showToast('تم حفظ الملف في: ' + savedLocation);
-          return;
-        }
-      } catch(e) {
-        hideLoading();
-        console.error('Capacitor Excel download error:', e);
-      }
-    }
-  }
-  
-  // === METHOD 2: Web Share API ===
-  if (navigator.share) {
-    try {
-      const file = new File([blob], fileName, { type: blob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      await navigator.share({ files: [file], title: fileName });
-      return;
-    } catch(e) { if (e.name === 'AbortError') return; }
-  }
-  
-  // === METHOD 3: FileSaver.js ===
-  try { if (typeof saveAs === 'function') { saveAs(blob, fileName); return; } } catch(e) {}
-  
-  // === METHOD 4: Blob URL ===
-  try {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = fileName; a.style.display = 'none';
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 5000);
-    return;
-  } catch(e) {}
-  
-  showToast('لم يتمكن من تحميل الملف', '#dc2626');
+  await im_deliverFile(blob, fileName);
 }
 
 // ---- Project Save / Load ----
