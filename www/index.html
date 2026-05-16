@@ -1150,10 +1150,10 @@ async function tk_saveAndDownload() {
       hideLoading();
       showToast('تم الحفظ مباشرة في الملف الأصلي ✓');
     } else {
-      // Fallback: download the modified file with the same name
-      saveAs(newBlob, tk_fileName || 'grades.xlsx');
+      // Fallback: download/share the modified file
+      await im_downloadBlob(newBlob, tk_fileName || 'grades.xlsx');
       hideLoading();
-      showToast('تم تحميل الملف المعدّل – استبدل الأصلي به');
+      showToast('تم تحميل الملف المعدّل');
     }
   } catch (e) {
     hideLoading();
@@ -1352,9 +1352,27 @@ async function im_generateWord() {
   }
 }
 
-// ---- Universal download function (works in WebView too) ----
-function im_downloadBlob(blob, fileName) {
-  // Try FileSaver first (works in browser)
+// ---- Universal download function (works in WebView / APK too) ----
+async function im_downloadBlob(blob, fileName) {
+  // Method 1: Web Share API (best for Android WebView/APK)
+  // Opens Android share sheet → user can save to Files, Google Drive, etc.
+  if (navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], fileName, { type: blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: fileName
+        });
+        return; // Success!
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return; // User cancelled share
+      console.warn('Share failed, trying fallback:', e);
+    }
+  }
+
+  // Method 2: FileSaver (works in regular Chrome/Edge browser)
   try {
     if (typeof saveAs === 'function') {
       saveAs(blob, fileName);
@@ -1362,7 +1380,7 @@ function im_downloadBlob(blob, fileName) {
     }
   } catch(e) {}
 
-  // Fallback: create object URL and click a link
+  // Method 3: Anchor click with object URL
   try {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1374,22 +1392,19 @@ function im_downloadBlob(blob, fileName) {
     setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }, 3000);
+    }, 5000);
     return;
   } catch(e) {}
 
-  // Last fallback: open in new tab
+  // Method 4: Data URL in new window
   try {
     const reader = new FileReader();
     reader.onload = function() {
-      const win = window.open('', '_blank');
-      if (win) {
-        win.document.write('<html><body><p>الملف جاهز. اضغط بزر الماوس الأيمن واختر "حفظ باسم"</p></body></html>');
-      }
+      window.open(reader.result, '_blank');
     };
     reader.readAsDataURL(blob);
   } catch(e) {
-    alert('لم يتمكن من تحميل الملف. جرّب في متصفح Chrome.');
+    alert('لم يتمكن من تحميل الملف');
   }
 }
 
