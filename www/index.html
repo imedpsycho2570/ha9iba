@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-title" content="حقيبة الأستاذ">
 <link rel="manifest" href="manifest.json">
 <!-- SheetJS for Excel READING only -->
-<script src="js/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <!-- docx.js for Word generation -->
-<script src="js/docx.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <!-- FileSaver for downloading -->
-<script src="js/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <!-- JSZip for surgical XML editing (both xlsx and docx) -->
-<script src="js/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -32,11 +32,13 @@
   .screen {
     display: none;
     min-height: 100vh;
+    height: 100vh;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 24px;
+    justify-content: flex-start;
+    padding: 16px;
     animation: fadeIn 0.4s ease;
+    overflow-y: auto;
   }
   .screen.active { display: flex; }
 
@@ -95,7 +97,7 @@
     background: #fff;
     border-radius: 20px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    padding: 32px;
+    padding: 24px 20px;
     width: 100%;
     max-width: 420px;
   }
@@ -237,7 +239,7 @@
   .upload-area {
     border: 2.5px dashed #bfdbfe;
     border-radius: 18px;
-    padding: 48px 20px;
+    padding: 32px 20px;
     text-align: center;
     cursor: pointer;
     transition: all 0.25s;
@@ -305,7 +307,7 @@
   .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
 
   .scroll-area {
-    flex: 1; overflow-y: auto; max-height: 55vh; padding-left: 4px;
+    flex: 1; overflow-y: auto; max-height: 78vh; padding-left: 4px;
     width: 100%; max-width: 420px;
   }
   .scroll-area::-webkit-scrollbar { width: 4px; }
@@ -354,7 +356,7 @@
   .form-row input { width:100%;height:44px;border:2px solid #e5e7eb;border-radius:10px;padding:0 12px;font-size:0.95rem;text-align:right;outline:none;transition:border-color 0.2s;direction:rtl; }
   .form-row input:focus { border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
 
-  .exercise-textarea { width:100%;height:70vh;border:2px solid #e5e7eb;border-radius:12px;padding:14px;font-size:1.05rem;text-align:right;direction:rtl;outline:none;resize:none;line-height:1.8;font-family:'Segoe UI',Tahoma,Arial,sans-serif;transition:border-color 0.2s; }
+  .exercise-textarea { width:100%;height:60vh;border:2px solid #e5e7eb;border-radius:12px;padding:14px;font-size:1.05rem;text-align:right;direction:rtl;outline:none;resize:none;line-height:1.8;font-family:'Segoe UI',Tahoma,Arial,sans-serif;transition:border-color 0.2s; }
   .exercise-textarea:focus { border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
 
   .symbols-toggle { width:100%;height:44px;border:2px solid #bfdbfe;border-radius:10px;background:#eff6ff;color:#2563eb;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px; }
@@ -387,7 +389,7 @@
 <body>
 
 <!-- ===== SPLASH SCREEN ===== -->
-<div id="screen-splash" class="screen active">
+<div id="screen-splash" class="screen active" style="justify-content:center">
   <div style="text-align:center; animation: scaleIn 1.2s ease">
     <div class="logo-title" style="font-size:2.8rem">حقيبة الأستاذ</div>
     <div class="logo-subtitle">AI.DZ technologie</div>
@@ -395,7 +397,7 @@
 </div>
 
 <!-- ===== ACTIVATION SCREEN ===== -->
-<div id="screen-activation" class="screen">
+<div id="screen-activation" class="screen" style="justify-content:center">
   <div class="card">
     <div class="icon-circle">
       <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -413,7 +415,7 @@
 </div>
 
 <!-- ===== MENU SCREEN ===== -->
-<div id="screen-menu" class="screen">
+<div id="screen-menu" class="screen" style="justify-content:center">
   <div style="text-align:center">
     <div class="icon-circle" style="width:100px;height:100px;margin-bottom:20px">
       <svg viewBox="0 0 24 24" style="width:50px;height:50px"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
@@ -434,7 +436,7 @@
 </div>
 
 <!-- ===== TK: MAIN / UPLOAD SCREEN ===== -->
-<div id="screen-tk-main" class="screen">
+<div id="screen-tk-main" class="screen" style="justify-content:center">
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -472,7 +474,7 @@
 </div>
 
 <!-- ===== TK: COLUMN CHECK SCREEN ===== -->
-<div id="screen-tk-col_check" class="screen">
+<div id="screen-tk-col_check" class="screen" style="justify-content:center">
   <div class="card">
     <div class="icon-circle icon-circle-sm">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -490,7 +492,7 @@
 </div>
 
 <!-- ===== TK: SHEETS SELECTION SCREEN ===== -->
-<div id="screen-tk-sheets" class="screen" style="justify-content:flex-start;padding-top:32px">
+<div id="screen-tk-sheets" class="screen" style="justify-content:flex-start;padding-top:12px">
   <div class="screen-header">
     <h2 style="font-size:1.5rem;font-weight:700;color:#1f2937;margin-bottom:4px">اختيار الورقة</h2>
     <p style="color:#6b7280;font-size:0.9rem">اختر ورقة من ملف Excel للمتابعة</p>
@@ -500,7 +502,7 @@
 </div>
 
 <!-- ===== TK: STUDENT LIST SCREEN ===== -->
-<div id="screen-tk-list" class="screen" style="justify-content:flex-start;padding-top:32px">
+<div id="screen-tk-list" class="screen" style="justify-content:flex-start;padding-top:12px">
   <div class="screen-header">
     <h2 id="tk-list-title" style="font-size:1.25rem;font-weight:700;color:#1f2937;margin-bottom:4px"></h2>
     <p id="tk-list-subtitle" style="color:#6b7280;font-size:0.85rem"></p>
@@ -521,7 +523,7 @@
 </div>
 
 <!-- ===== TK: GRADE ENTRY SCREEN ===== -->
-<div id="screen-tk-grade" class="screen">
+<div id="screen-tk-grade" class="screen" style="justify-content:center">
   <div class="card">
     <div class="icon-circle icon-circle-sm">
       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -543,21 +545,26 @@
 </div>
 
 <!-- ===== IM: MAIN APP SCREEN ===== -->
-<div id="screen-im-main" class="screen" style="justify-content:flex-start;padding-top:16px">
-  <div class="screen-header">
+<div id="screen-im-main" class="screen" style="justify-content:flex-start;padding-top:8px">
+  <div class="screen-header" style="margin-bottom:8px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="modal-close" onclick="goToScreen('menu')" title="رجوع" style="background:#f3f4f6;color:#6b7280">
-          <svg viewBox="0 0 24 24" style="width:18px;height:18px"><polyline points="15 18 9 12 15 6"/></svg>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="modal-close" onclick="goToScreen('menu')" title="رجوع" style="background:#f3f4f6;color:#6b7280;width:32px;height:32px">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <h2 style="font-size:1.3rem;font-weight:700;color:#1f2937">إنشاء امتحان</h2>
+        <h2 style="font-size:1.2rem;font-weight:700;color:#1f2937">إنشاء امتحان</h2>
       </div>
-      <button class="modal-close" onclick="showExpiryInfo()" title="الصلاحية" style="background:#eff6ff;color:#2563eb">
-        <svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      </button>
+      <div style="display:flex;gap:6px">
+        <button class="modal-close" onclick="im_openProjectModal()" title="فتح مشروع" style="background:#f0fdf4;color:#16a34a;width:32px;height:32px">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="modal-close" onclick="showExpiryInfo()" title="الصلاحية" style="background:#eff6ff;color:#2563eb;width:32px;height:32px">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+      </div>
     </div>
   </div>
-  <div class="scroll-area" id="im-main-scroll">
+  <div class="scroll-area" id="im-main-scroll" style="max-height:85vh">
     <label style="font-size:0.82rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">نوع المدرسة</label>
     <div class="toggle-group">
       <button class="toggle-btn" onclick="im_setSchoolType(this,'ابتدائية')">ابتدائية</button>
@@ -570,6 +577,7 @@
       <button class="toggle-btn active" onclick="im_setExamType(this,'اختبار')">اختبار</button>
       <button class="toggle-btn" onclick="im_setExamType(this,'تقييم مكتسبات')">تقييم مكتسبات</button>
     </div>
+    <div class="form-row"><label>عنوان المشروع</label><input id="im-f-title" placeholder="أدخل عنوان المشروع"></div>
     <div class="form-row"><label>الولاية</label><input id="im-f-dir" placeholder="أدخل الولاية"></div>
     <div class="form-row"><label>المؤسسة</label><input id="im-f-sch" placeholder="أدخل اسم المؤسسة"></div>
     <div class="form-row"><label>المستوى</label><input id="im-f-lvl" placeholder="أدخل المستوى"></div>
@@ -577,16 +585,33 @@
     <div class="form-row"><label>التاريخ</label><input id="im-f-date" type="date"></div>
     <div class="form-row"><label>المدة</label><input id="im-f-dur" placeholder="مثال: ساعة واحدة"></div>
     <div class="form-row"><label>رقم الثلاثي</label><input id="im-f-trm" placeholder="مثال: 01"></div>
-    <div style="margin-top:14px"></div>
+    <div style="margin-top:12px"></div>
     <div id="im-exercise-list"></div>
-    <button class="btn btn-success" style="margin-bottom:10px" onclick="im_openExerciseModal(-1)">
-      <svg viewBox="0 0 24 24" style="width:20px;height:20px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      إضافة تمرين
-    </button>
-    <button class="btn btn-primary" style="margin-bottom:20px" onclick="im_generateWord()">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-success" style="flex:1" onclick="im_openExerciseModal(-1)">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        إضافة تمرين
+      </button>
+      <button class="btn btn-outline" style="flex:1;border-color:#16a34a;color:#16a34a" onclick="im_saveProject()">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        حفظ
+      </button>
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:16px" onclick="im_generateWord()">
       <svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       توليد الملف
     </button>
+  </div>
+</div>
+
+<!-- ===== IM: OPEN PROJECT MODAL ===== -->
+<div id="screen-im-project-modal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>فتح مشروع محفوظ</h3>
+      <button class="modal-close" onclick="im_closeProjectModal()">&#10005;</button>
+    </div>
+    <div id="im-project-list" style="max-height:60vh;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -1316,13 +1341,166 @@ async function im_generateWord() {
     zip.file('word/document.xml', modified);
     const newBlob = await zip.generateAsync({ type: 'blob' });
 
-    saveAs(newBlob, im_examType + '_' + (sub || 'امتحان') + '.docx');
+    const fileName = im_examType + '_' + (sub || 'امتحان') + '.docx';
+    im_downloadBlob(newBlob, fileName);
     hideLoading();
-    showToast('تم توليد الملف بنجاح');
+    showToast('تم توليد الملف بنجاح ✓');
   } catch (e) {
     hideLoading();
     console.error('Generate error:', e);
     showToast('خطأ في توليد الملف: ' + e.message, '#dc2626');
+  }
+}
+
+// ---- Universal download function (works in WebView too) ----
+function im_downloadBlob(blob, fileName) {
+  // Try FileSaver first (works in browser)
+  try {
+    if (typeof saveAs === 'function') {
+      saveAs(blob, fileName);
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback: create object URL and click a link
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 3000);
+    return;
+  } catch(e) {}
+
+  // Last fallback: open in new tab
+  try {
+    const reader = new FileReader();
+    reader.onload = function() {
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write('<html><body><p>الملف جاهز. اضغط بزر الماوس الأيمن واختر "حفظ باسم"</p></body></html>');
+      }
+    };
+    reader.readAsDataURL(blob);
+  } catch(e) {
+    alert('لم يتمكن من تحميل الملف. جرّب في متصفح Chrome.');
+  }
+}
+
+// ---- Project Save / Load ----
+function im_getProjectData() {
+  return {
+    title: document.getElementById('im-f-title').value.trim(),
+    schoolType: im_schoolType,
+    examType: im_examType,
+    dir: document.getElementById('im-f-dir').value,
+    sch: document.getElementById('im-f-sch').value,
+    lvl: document.getElementById('im-f-lvl').value,
+    sub: document.getElementById('im-f-sub').value,
+    date: document.getElementById('im-f-date').value,
+    dur: document.getElementById('im-f-dur').value,
+    trm: document.getElementById('im-f-trm').value,
+    exercises: [...im_exercises],
+    savedAt: new Date().toISOString()
+  };
+}
+
+function im_loadProjectData(data) {
+  document.getElementById('im-f-title').value = data.title || '';
+  // Set school type
+  im_schoolType = data.schoolType || 'متوسطة';
+  document.querySelectorAll('#im-main-scroll .toggle-group')[0].querySelectorAll('.toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === im_schoolType);
+  });
+  // Set exam type
+  im_examType = data.examType || 'اختبار';
+  document.querySelectorAll('#im-main-scroll .toggle-group')[1].querySelectorAll('.toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === im_examType);
+  });
+  document.getElementById('im-f-dir').value = data.dir || '';
+  document.getElementById('im-f-sch').value = data.sch || '';
+  document.getElementById('im-f-lvl').value = data.lvl || '';
+  document.getElementById('im-f-sub').value = data.sub || '';
+  document.getElementById('im-f-date').value = data.date || '';
+  document.getElementById('im-f-dur').value = data.dur || '';
+  document.getElementById('im-f-trm').value = data.trm || '';
+  im_exercises = data.exercises || [];
+  im_renderExercises();
+}
+
+function im_saveProject() {
+  const data = im_getProjectData();
+  const title = data.title || 'مشروع بدون عنوان';
+  data.title = title;
+
+  // Get existing projects
+  let projects = [];
+  try { projects = JSON.parse(localStorage.getItem('ha9iba_projects') || '[]'); } catch(e) { projects = []; }
+
+  // Check if project with same title exists (update it)
+  const existingIdx = projects.findIndex(p => p.title === title);
+  if (existingIdx >= 0) {
+    projects[existingIdx] = data;
+  } else {
+    projects.push(data);
+  }
+
+  try {
+    localStorage.setItem('ha9iba_projects', JSON.stringify(projects));
+    showToast('تم حفظ المشروع ✓');
+  } catch(e) {
+    showToast('خطأ: الذاكرة ممتلئة', '#dc2626');
+  }
+}
+
+function im_openProjectModal() {
+  let projects = [];
+  try { projects = JSON.parse(localStorage.getItem('ha9iba_projects') || '[]'); } catch(e) { projects = []; }
+
+  const container = document.getElementById('im-project-list');
+  if (projects.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:40px 0">لا توجد مشاريع محفوظة</div>';
+  } else {
+    container.innerHTML = projects.map((p, idx) => {
+      const dateStr = p.savedAt ? new Date(p.savedAt).toLocaleDateString('ar-DZ') : '';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:12px;background:#f9fafb;margin-bottom:8px;cursor:pointer" onclick="im_loadProject('+idx+')">' +
+        '<div><div style="font-weight:600;color:#1f2937;font-size:0.95rem">' + p.title + '</div>' +
+        '<div style="font-size:0.75rem;color:#9ca3af">' + (p.sub || '') + ' • ' + dateStr + '</div></div>' +
+        '<button style="background:#fef2f2;color:#dc2626;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:0.85rem" onclick="event.stopPropagation();im_deleteProject('+idx+')">✕</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  document.getElementById('screen-im-project-modal').classList.add('open');
+}
+
+function im_closeProjectModal() {
+  document.getElementById('screen-im-project-modal').classList.remove('open');
+}
+
+function im_loadProject(idx) {
+  let projects = [];
+  try { projects = JSON.parse(localStorage.getItem('ha9iba_projects') || '[]'); } catch(e) { projects = []; }
+  if (projects[idx]) {
+    im_loadProjectData(projects[idx]);
+    im_closeProjectModal();
+    showToast('تم فتح المشروع ✓');
+  }
+}
+
+function im_deleteProject(idx) {
+  let projects = [];
+  try { projects = JSON.parse(localStorage.getItem('ha9iba_projects') || '[]'); } catch(e) { projects = []; }
+  if (confirm('هل تريد حذف هذا المشروع؟')) {
+    projects.splice(idx, 1);
+    localStorage.setItem('ha9iba_projects', JSON.stringify(projects));
+    im_openProjectModal(); // Refresh list
   }
 }
 
