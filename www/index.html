@@ -1541,37 +1541,46 @@ async function im_shareFile() {
         
         // Try CACHE directory first (no permissions needed)
         try {
-          writeResult = await FS.writeFile({
-            path: fileName,
-            data: pureBase64,
-            directory: 'CACHE',
-            recursive: true,
-          });
-          savedLocation = writeResult.uri || fileName;
-        } catch(cacheErr) {
-          console.warn('CACHE write failed, trying DOCUMENTS:', cacheErr);
-          // Try DOCUMENTS directory
-          try {
-            writeResult = await FS.writeFile({
+          writeResult = await Promise.race([
+            FS.writeFile({
               path: fileName,
               data: pureBase64,
-              directory: 'DOCUMENTS',
+              directory: 'CACHE',
               recursive: true,
-            });
+            }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('writeFile timeout')), 15000))
+          ]);
+          savedLocation = writeResult.uri || fileName;
+        } catch(cacheErr) {
+          console.warn('CACHE write failed:', cacheErr.message || cacheErr);
+          // Try DOCUMENTS directory
+          try {
+            writeResult = await Promise.race([
+              FS.writeFile({
+                path: fileName,
+                data: pureBase64,
+                directory: 'DOCUMENTS',
+                recursive: true,
+              }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('writeFile timeout')), 15000))
+            ]);
             savedLocation = writeResult.uri || fileName;
           } catch(docsErr) {
-            console.warn('DOCUMENTS write failed, trying EXTERNAL_STORAGE:', docsErr);
+            console.warn('DOCUMENTS write failed:', docsErr.message || docsErr);
             // Try EXTERNAL_STORAGE/Download
             try {
-              writeResult = await FS.writeFile({
-                path: 'Download/' + fileName,
-                data: pureBase64,
-                directory: 'EXTERNAL_STORAGE',
-                recursive: true,
-              });
+              writeResult = await Promise.race([
+                FS.writeFile({
+                  path: 'Download/' + fileName,
+                  data: pureBase64,
+                  directory: 'EXTERNAL_STORAGE',
+                  recursive: true,
+                }),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('writeFile timeout')), 15000))
+              ]);
               savedLocation = writeResult.uri || ('Download/' + fileName);
             } catch(extErr) {
-              console.warn('EXTERNAL_STORAGE write failed:', extErr);
+              console.warn('EXTERNAL_STORAGE write failed:', extErr.message || extErr);
             }
           }
         }
@@ -1599,7 +1608,16 @@ async function im_shareFile() {
               return;
             }
           } else {
-            // No Share plugin, but file was saved
+            // No Share plugin, but file was saved - try Web Share API as alternative
+            if (navigator.share) {
+              try {
+                const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                await navigator.share({ files: [file], title: fileName });
+                return;
+              } catch(e) {
+                if (e.name === 'AbortError') { showToast('تم حفظ الملف ✓'); return; }
+              }
+            }
             showToast('تم حفظ الملف في: ' + savedLocation);
             return;
           }
@@ -1610,7 +1628,44 @@ async function im_shareFile() {
         // Fall through to other methods
       }
     } else {
-      console.warn('Capacitor detected but Filesystem plugin not available');
+      console.warn('Capacitor detected but Filesystem plugin not available - trying nativePromise directly');
+      // === METHOD 1b: Direct Capacitor bridge call ===
+      if (window.Capacitor.nativePromise) {
+        try {
+          showLoading('جاري حفظ الملف...');
+          let pureBase64 = await im_blobToBase64(blob);
+          
+          const writeResult = await Promise.race([
+            window.Capacitor.nativePromise('Filesystem', 'writeFile', {
+              path: fileName,
+              data: pureBase64,
+              directory: 'CACHE',
+              recursive: true,
+            }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('nativePromise timeout')), 15000))
+          ]);
+          
+          hideLoading();
+          
+          if (writeResult) {
+            // Try sharing
+            try {
+              await window.Capacitor.nativePromise('Share', 'share', {
+                title: fileName,
+                url: writeResult.uri,
+                dialogTitle: 'حفظ أو مشاركة الملف',
+              });
+              return;
+            } catch(shareErr) {
+              showToast('تم حفظ الملف ✓');
+              return;
+            }
+          }
+        } catch(e) {
+          hideLoading();
+          console.error('Direct nativePromise error:', e);
+        }
+      }
     }
   }
   
