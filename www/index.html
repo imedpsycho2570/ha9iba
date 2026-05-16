@@ -1238,113 +1238,207 @@ function im_insertSymbol(sym) {
   ta.focus();
 }
 
-// ---- Generate Word Document ----
+// ---- Generate Word Document ---- (from original imtihan.html)
 async function im_generateWord() {
-  if (im_exercises.length === 0) { showToast('أضف تمريناً واحداً على الأقل', '#f59e0b'); return; }
+  const dir = document.getElementById('im-f-dir').value.trim();
+  const sch = document.getElementById('im-f-sch').value.trim();
+  const lvl = document.getElementById('im-f-lvl').value.trim();
+  const sub = document.getElementById('im-f-sub').value.trim();
+  const dateVal = document.getElementById('im-f-date').value.trim();
+  const dur = document.getElementById('im-f-dur').value.trim();
+  const trm = document.getElementById('im-f-trm').value.trim();
 
   showLoading('جاري توليد الملف...');
 
   try {
-    const dir = document.getElementById('im-f-dir').value.trim();
-    const sch = document.getElementById('im-f-sch').value.trim();
-    const lvl = document.getElementById('im-f-lvl').value.trim();
-    const sub = document.getElementById('im-f-sub').value.trim();
-    const dateVal = document.getElementById('im-f-date').value;
-    const dur = document.getElementById('im-f-dur').value.trim();
-    const trm = document.getElementById('im-f-trm').value.trim();
+    const { Document, Packer, Paragraph, TextRun, AlignmentType,
+            BorderStyle, Table, TableRow, TableCell, WidthType,
+            VerticalAlign, Footer } = docx;
 
-    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageBreak, HeadingLevel, ShadingType, TabStopType, TabStopPosition } = docx;
+    const FONT = 'Traditional Arabic';
+    const FS = 26;       // 13pt body
+    const FS_LG = 28;    // 14pt headers
+    const FS_XL = 32;    // 16pt exam title
+
+    const SP = { after: 0, line: 240 };
 
     const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
-    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+    const cellBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+    const tableBorders = {
+      top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+      insideHorizontal: noBorder, insideVertical: noBorder,
+    };
 
-    // Header table (3 columns, borderless, bidiVisual)
-    const headerTable = new Table({
-      rows: [
-        new TableRow({ children: [
-          new TableCell({ width: { size: 3200, type: WidthType.DXA }, borders: noBorders, children: [
-            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'الجمهورية الجزائرية الديمقراطية الشعبية', font: 'Traditional Arabic', size: 22 })] }),
-            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'وزارة التربية الوطنية', font: 'Traditional Arabic', size: 22 })] }),
-          ]}),
-          new TableCell({ width: { size: 3706, type: WidthType.DXA }, borders: noBorders, children: [
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: im_schoolType, font: 'Traditional Arabic', size: 24, bold: true })] }),
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: dir || '..........', font: 'Traditional Arabic', size: 22 })] }),
-          ]}),
-          new TableCell({ width: { size: 3200, type: WidthType.DXA }, borders: noBorders, children: [
-            new Paragraph({ alignment: AlignmentType.LEFT, children: [new TextRun({ text: sch || '..........', font: 'Traditional Arabic', size: 22 })] }),
-            new Paragraph({ alignment: AlignmentType.LEFT, children: [new TextRun({ text: im_examType + ' ' + trm ? im_examType + ' الثلاثي ' + (trm || '..') : im_examType, font: 'Traditional Arabic', size: 22 })] }),
-          ]}),
-        ]}),
-      ],
-    });
+    function t(text, opts = {}) {
+      return new TextRun({
+        text: text || '',
+        font: FONT,
+        size: opts.size || FS,
+        bold: opts.bold || false,
+        rightToLeft: true,
+        ...opts,
+      });
+    }
 
-    // Exam title
-    const examTitle = new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 200, after: 100 },
-      children: [new TextRun({ text: im_examType + ' الثلاثي ' + (trm || '..') + ' في مادة ' + (sub || '..........'), font: 'Traditional Arabic', size: 28, bold: true })],
-    });
+    function p(runs, opts = {}) {
+      return new Paragraph({
+        bidirectional: true,
+        alignment: opts.align || AlignmentType.RIGHT,
+        spacing: opts.spacing || SP,
+        ...opts,
+        children: Array.isArray(runs) ? runs : [runs],
+      });
+    }
 
-    // Info line
-    const infoLine = new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [
-        new TextRun({ text: 'المستوى: ' + (lvl || '..........'), font: 'Traditional Arabic', size: 24 }),
-        new TextRun({ text: '          ', font: 'Traditional Arabic' }),
-        new TextRun({ text: 'المدة: ' + (dur || '..........'), font: 'Traditional Arabic', size: 24 }),
-        new TextRun({ text: '          ', font: 'Traditional Arabic' }),
-        new TextRun({ text: 'التاريخ: ' + (dateVal || '..........'), font: 'Traditional Arabic', size: 24 }),
-      ],
-    });
+    function hline() {
+      return new Paragraph({
+        bidirectional: true,
+        spacing: { after: 0, line: 240 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: '000000' } },
+      });
+    }
 
-    // Exercises
-    const exerciseParagraphs = [];
+    function headerLine(rightRuns, centerRuns, leftRuns) {
+      const zeroMargin = { top: 0, bottom: 0, left: 0, right: 0 };
+      const makeCell = (runs, align, wDxa) => new TableCell({
+        borders: cellBorders,
+        width: { size: wDxa, type: WidthType.DXA },
+        verticalAlign: VerticalAlign.CENTER,
+        margins: zeroMargin,
+        children: [new Paragraph({
+          bidirectional: true,
+          alignment: align,
+          spacing: SP,
+          indent: { left: 0, right: 0 },
+          children: runs,
+        })],
+      });
+      return new Table({
+        width: { size: 10106, type: WidthType.DXA },
+        borders: tableBorders,
+        rows: [
+          new TableRow({
+            children: [
+              makeCell(rightRuns, AlignmentType.RIGHT, 3200),
+              makeCell(centerRuns, AlignmentType.CENTER, 3706),
+              makeCell(leftRuns, AlignmentType.LEFT, 3200),
+            ],
+          }),
+        ],
+      });
+    }
+
+    let dateDisplay = '............';
+    if (dateVal) {
+      try {
+        const d = new Date(dateVal);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        dateDisplay = yyyy + '/' + mm + '/' + dd;
+      } catch(e) { dateDisplay = dateVal; }
+    }
+
+    const children = [];
+
+    // السطر الأول: الجمهورية (المنتصف)
+    children.push(p([
+      t('الجمهورية الجزائرية الديمقراطية الشعبية', { bold: true, size: FS })
+    ], { align: AlignmentType.CENTER }));
+
+    // السطر الثاني: وزارة (يمين) | مديرية+ولاية (وسط) | متوسطة+اسم المؤسسة (يسار)
+    children.push(headerLine(
+      [t('وزارة التربية الوطنية', { bold: true, size: FS })],
+      [t('مديرية التربية لولاية ', { bold: true, size: FS }), t(dir || '............', { bold: true, size: FS })],
+      [t(im_schoolType + ' ' + (sch || '............'), { bold: true, size: FS })],
+    ));
+
+    // السطر الثالث: المستوى (يمين) | بتاريخ (وسط) | المدة (يسار)
+    children.push(headerLine(
+      [t('المستوى: ', { bold: true, size: FS }), t(lvl || '............', { bold: true, size: FS })],
+      [t('بتاريخ ', { bold: true, size: FS }), t(dateDisplay, { bold: true, size: FS })],
+      [t('المدة: ', { bold: true, size: FS }), t(dur || '............', { bold: true, size: FS })],
+    ));
+
+    // السطر الرابع: اختبار الثلاثي ... في مادة ... (المنتصف)
+    children.push(p([
+      t(im_examType + ' الثلاثي ', { bold: true, size: FS_XL }),
+      t(trm || '', { bold: true, size: FS_XL }),
+      t(' في مادة ', { bold: true, size: FS_XL }),
+      t(sub || '............', { bold: true, size: FS_XL }),
+    ], { align: AlignmentType.CENTER }));
+
+    // خط فاصل
+    children.push(hline());
+
+    // التمارين
     for (let i = 0; i < im_exercises.length; i++) {
-      exerciseParagraphs.push(new Paragraph({
-        spacing: { before: 200, after: 100 },
-        children: [new TextRun({ text: 'التمرين ' + (i + 1) + ':', font: 'Traditional Arabic', size: 26, bold: true, underline: {} })],
-      }));
+      const qNum = i + 1;
+      const arabicNums = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس',
+                          'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر'];
+      const qLabel = qNum <= 10 ? arabicNums[qNum - 1] : String(qNum);
+
+      children.push(p([
+        t('التمرين ' + qLabel + ':', { bold: true, size: FS_LG })
+      ]));
+
       const lines = im_exercises[i].split('\n');
       for (const line of lines) {
-        exerciseParagraphs.push(new Paragraph({
-          spacing: { after: 50 },
-          children: [new TextRun({ text: line, font: 'Traditional Arabic', size: 24 })],
-        }));
+        children.push(p([t(line || ' ', { size: FS })]));
       }
+
+      children.push(hline());
     }
 
     const doc = new Document({
       sections: [{
         properties: {
           page: {
-            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            margin: {
+              top: 720,
+              right: 900,
+              bottom: 1440,
+              left: 900,
+              footer: 567,
+            },
             borders: {
-              pageBorderTop: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
-              pageBorderBottom: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
-              pageBorderLeft: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
-              pageBorderRight: { style: BorderStyle.SINGLE, size: 6, space: 24, color: '000000' },
+              pageBorderTop: { style: BorderStyle.SINGLE, size: 6, space: 14, color: '000000' },
+              pageBorderBottom: { style: BorderStyle.SINGLE, size: 6, space: 14, color: '000000' },
+              pageBorderLeft: { style: BorderStyle.SINGLE, size: 6, space: 14, color: '000000' },
+              pageBorderRight: { style: BorderStyle.SINGLE, size: 6, space: 14, color: '000000' },
             },
           },
         },
-        children: [headerTable, examTitle, infoLine, ...exerciseParagraphs],
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                bidirectional: true,
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 0 },
+                children: [t('بالتوفيق', { bold: true, size: FS_LG })],
+              }),
+            ],
+          }),
+        },
+        children: children,
       }],
     });
 
-    const blob = await Packer.toBlob(doc);
+    const rawBlob = await Packer.toBlob(doc);
 
-    // JSZip post-processing for bidiVisual and tblCellMar
-    const zip = await JSZip.loadAsync(blob);
-    const docXml = await zip.file('word/document.xml').async('string');
-    let modified = docXml.replace(/<w:tblPr>/g,
-      '<w:tblPr><w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>');
-    zip.file('word/document.xml', modified);
-    const newBlob = await zip.generateAsync({ type: 'blob' });
+    // JSZip post-processing: add bidiVisual + tblCellMar to tables
+    const zip = await JSZip.loadAsync(rawBlob);
+    let xml = await zip.file('word/document.xml').async('string');
+    xml = xml.replace(/<w:tblPr>/g, '<w:tblPr><w:bidiVisual/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>');
+    await zip.file('word/document.xml', xml);
+    const finalBlob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 
     const fileName = im_examType + '_' + (sub || 'امتحان') + '.docx';
-    im_downloadBlob(newBlob, fileName);
+    await im_downloadBlob(finalBlob, fileName);
     hideLoading();
     showToast('تم توليد الملف بنجاح ✓');
+
   } catch (e) {
     hideLoading();
     console.error('Generate error:', e);
