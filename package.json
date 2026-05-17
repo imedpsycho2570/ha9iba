@@ -2,6 +2,9 @@
   "name": "ha9iba",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "postinstall": "echo 'npm postinstall - will patch Android after cap sync'"
+  },
   "dependencies": {
     "@capacitor/android": "^6.1.0",
     "@capacitor/core": "^6.1.0",
